@@ -1,0 +1,7 @@
+# Local test only (not used by Coolify):
+#   docker compose -f docker-compose.yml -f compose.local.yml up --build
+# then open http://localhost:8787
+services:
+  meowtrix:
+    ports:
+      - "8787:80"

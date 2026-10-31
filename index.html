@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="Meowtrix – un lézard 3D à chasser pour votre chat, en plein écran." />
+    <meta name="theme-color" content="#0f1412" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Meowtrix" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <title>Meowtrix</title>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <main id="menu" class="menu">
+      <div class="panel">
+        <h1 class="logo">Meow<span>trix</span></h1>
+        <p class="tagline" data-i18n="tagline"></p>
+        <button id="play" class="play" type="button"></button>
+        <button id="exit-fs" class="install" type="button" data-i18n="exitFullscreen" hidden></button>
+        <p id="fatal" class="fatal" data-i18n="noWebgl" hidden></p>
+        <div id="options" class="options"></div>
+        <p id="install-hint" class="note" data-i18n="installIos" hidden></p>
+        <button id="install" class="install" type="button" data-i18n="install" hidden></button>
+        <p class="note" data-i18n="safety"></p>
+      </div>
+    </main>
+
+    <button id="hold" class="hold" type="button" data-i18n-aria="holdLabel" hidden>
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle class="track" cx="24" cy="24" r="21" />
+        <circle class="progress" cx="24" cy="24" r="21" />
+        <path class="bars" d="M16 18h16M16 24h16M16 30h16" />
+      </svg>
+    </button>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
