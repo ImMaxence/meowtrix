@@ -8,10 +8,10 @@ interface Sample {
 }
 
 export interface InputHandlers {
-  /** A tap, paw or click at a ground point. */
-  touch(x: number, z: number): void;
-  /** A pointer moving over the ground at `speed` lizard lengths per second. */
-  pointer(x: number, z: number, speed: number): void;
+  /** A tap, paw or click at a ground point; (sx, sy) is the screen position. */
+  touch(x: number, z: number, sx: number, sy: number): void;
+  /** A pointer moving over the ground at `speed` units per second. */
+  pointer(x: number, z: number, speed: number, sx: number, sy: number): void;
 }
 
 /** Turns taps, paws and mouse movement into ground-space stimuli. */
@@ -27,7 +27,7 @@ export class PointerInput {
     el.addEventListener('pointerdown', (e) => {
       this.lastType = e.pointerType;
       if (!this.enabled || !this.world.pick(e.clientX, e.clientY, this.p)) return;
-      this.handlers.touch(this.p.x, this.p.z);
+      this.handlers.touch(this.p.x, this.p.z, e.clientX, e.clientY);
       this.last.set(e.pointerId, { x: this.p.x, z: this.p.z, t: e.timeStamp });
     });
     el.addEventListener('pointermove', (e) => {
@@ -37,7 +37,7 @@ export class PointerInput {
       if (prev && dt < 0.008) return;
       if (prev && dt < 0.25) {
         const speed = Math.hypot(this.p.x - prev.x, this.p.z - prev.z) / dt;
-        this.handlers.pointer(this.p.x, this.p.z, speed);
+        this.handlers.pointer(this.p.x, this.p.z, speed, e.clientX, e.clientY);
       }
       this.last.set(e.pointerId, { x: this.p.x, z: this.p.z, t: e.timeStamp });
     });

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="Meowtrix – un lézard 3D à chasser pour votre chat, en plein écran." />
+    <meta name="description" content="Meowtrix – lézards, souris et mouches en 3D à chasser pour votre chat, en plein écran." />
     <meta name="theme-color" content="#0f1412" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -20,15 +20,27 @@
 
     <main id="menu" class="menu">
       <div class="panel">
-        <h1 class="logo">Meow<span>trix</span></h1>
-        <p class="tagline" data-i18n="tagline"></p>
-        <button id="play" class="play" type="button"></button>
-        <button id="exit-fs" class="install" type="button" data-i18n="exitFullscreen" hidden></button>
-        <p id="fatal" class="fatal" data-i18n="noWebgl" hidden></p>
-        <div id="options" class="options"></div>
-        <p id="install-hint" class="note" data-i18n="installIos" hidden></p>
-        <button id="install" class="install" type="button" data-i18n="install" hidden></button>
-        <p class="note" data-i18n="safety"></p>
+        <header class="panel-head">
+          <div class="brand">
+            <h1 class="logo">Meow<span>trix</span></h1>
+            <p class="tagline" data-i18n="tagline"></p>
+          </div>
+          <div id="lang" class="lang"></div>
+        </header>
+
+        <nav id="tabs" class="tabs"></nav>
+        <div id="tab-panel" class="tab-panel" role="tabpanel"></div>
+
+        <footer class="panel-foot">
+          <p id="fatal" class="fatal" data-i18n="noWebgl" hidden></p>
+          <button id="play" class="play" type="button"></button>
+          <div class="foot-actions">
+            <button id="exit-fs" class="ghost" type="button" data-i18n="exitFullscreen" hidden></button>
+            <button id="install" class="ghost" type="button" data-i18n="install" hidden></button>
+          </div>
+          <p id="install-hint" class="note" data-i18n="installIos" hidden></p>
+          <p class="note" data-i18n="safety"></p>
+        </footer>
       </div>
     </main>
 

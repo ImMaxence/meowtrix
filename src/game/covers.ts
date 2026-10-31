@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { Lizard } from './lizard/lizard';
+import type { Walker } from './creature';
 import { clamp, rand, smoothstep, TAU } from './math';
 import { noise3 } from './noise';
 import type { Bounds } from './world';
@@ -21,13 +21,32 @@ const STONE_COLORS = ['#6e6a63', '#625b51', '#77716a', '#58554f', '#6b5f52'];
 
 /** Lowest point under a stone slab: higher than a lizard standing tall. */
 const SLAB_CLEARANCE = 0.09;
+/** How far around a body a leaf is lifted, beyond the body's own radius. */
+const DRAPE_FALLOFF = 0.07;
 
-/** Something a lizard can crawl under: a fallen leaf or a flat stone on pebbles. */
+/** A leaf's mesh and its resting shape, in the leaf's own frame. */
+interface Drape {
+  geometry: THREE.BufferGeometry;
+  rest: Float32Array;
+  cos: number;
+  sin: number;
+  halfLength: number;
+  halfWidth: number;
+  deformed: boolean;
+}
+
+/** Body points under a leaf: x, z, radius, top, repeated. */
+const samples: number[] = [];
+
+/** Something an animal can crawl under: a fallen leaf or a flat stone on pebbles. */
 export class Cover {
   readonly object = new THREE.Group();
-  /** The lizard hiding here (or on its way), so two never pick the same spot. */
-  occupant: Lizard | null = null;
+  /** The animal hiding here (or on its way), so two never pick the same spot. */
+  occupant: Walker | null = null;
   removed = false;
+  /** Pebbles holding up a stone: animals walk around them (x, z, radius, repeated). */
+  readonly solids: number[] = [];
+  drape: Drape | null = null;
 
   private wobble = 0;
   private t = rand(0, 10);
@@ -40,7 +59,7 @@ export class Cover {
     return Math.hypot(x - this.x, z - this.z);
   }
 
-  /** Leaves rustle when touched or when a lizard runs underneath. */
+  /** Leaves rustle when touched or when an animal runs underneath. */
   shake(amount: number): void {
     if (this.kind === 'leaf') this.wobble = Math.max(this.wobble, amount);
   }
@@ -52,6 +71,41 @@ export class Cover {
     this.object.rotation.x = w * 0.07 * Math.sin(this.t * 31);
     this.object.rotation.z = w * 0.07 * Math.cos(this.t * 27);
     this.object.position.y = w * 0.012 * Math.abs(Math.sin(this.t * 19));
+  }
+
+  /** Lifts the leaf over the bodies underneath, so it lies on them instead of cutting through. */
+  drapeOver(walkers: readonly Walker[]): void {
+    const d = this.drape;
+    if (!d) return;
+    samples.length = 0;
+    for (const w of walkers) {
+      if (this.distanceTo(w.pos.x, w.pos.y) > this.radius + 1.1) continue;
+      w.forEachSample((x, z, r, top) => {
+        const dx = x - this.x, dz = z - this.z;
+        const lx = dx * d.cos - dz * d.sin, lz = dx * d.sin + dz * d.cos;
+        const m = r + DRAPE_FALLOFF;
+        if (Math.abs(lx) < d.halfWidth + m && Math.abs(lz) < d.halfLength + m) samples.push(lx, lz, r, top + 0.008);
+      });
+    }
+    if (!samples.length && !d.deformed) return;
+
+    const p = d.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const vx = p.getX(i), vz = p.getZ(i), rest = d.rest[i];
+      let y = rest;
+      for (let k = 0; k < samples.length; k += 4) {
+        const lift = samples[k + 3];
+        if (lift <= y) continue;
+        const r = samples[k + 2];
+        const dist = Math.hypot(vx - samples[k], vz - samples[k + 1]);
+        if (dist >= r + DRAPE_FALLOFF) continue;
+        y = Math.max(y, rest + (lift - rest) * (1 - smoothstep(r * 0.6, r + DRAPE_FALLOFF, dist)));
+      }
+      p.setY(i, y);
+    }
+    p.needsUpdate = true;
+    d.geometry.computeVertexNormals();
+    d.deformed = samples.length > 0;
   }
 
   dispose(): void {
@@ -112,9 +166,9 @@ function leafTexture(palette: number): THREE.CanvasTexture {
   return tex;
 }
 
-/** A domed leaf: high enough in the middle for a lizard to crawl under, edges near the ground. */
+/** A slightly curled leaf lying on the ground; it lifts over whatever crawls underneath. */
 function makeLeaf(cover: Cover, halfLength: number, halfWidth: number): void {
-  const NT = 28, NV = 14, H = 0.14;
+  const NT = 28, NV = 14, H = 0.045;
   const seed = rand(0, 100);
   const pos: number[] = [], uv: number[] = [], index: number[] = [];
   for (let i = 0; i <= NT; i++) {
@@ -151,10 +205,21 @@ function makeLeaf(cover: Cover, halfLength: number, halfWidth: number): void {
   stem.position.set(0, 0.016, -halfLength - 0.035);
   stem.castShadow = true;
 
+  const yaw = rand(0, TAU);
   const g = new THREE.Group();
-  g.rotation.y = rand(0, TAU);
+  g.rotation.y = yaw;
   g.add(leaf, stem);
   cover.object.add(g);
+  const p = geo.attributes.position;
+  cover.drape = {
+    geometry: geo,
+    rest: Float32Array.from({ length: p.count }, (_, i) => p.getY(i)),
+    cos: Math.cos(yaw),
+    sin: Math.sin(yaw),
+    halfLength,
+    halfWidth,
+    deformed: false,
+  };
 }
 
 /** A flat stone propped on pebbles, with a gap underneath. */
@@ -192,17 +257,25 @@ function makeStone(cover: Cover, radius: number): void {
   slab.position.y = SLAB_CLEARANCE + thickness * 1.25;
   slab.castShadow = slab.receiveShadow = true;
 
+  const yaw = rand(0, TAU);
   const g = new THREE.Group();
-  g.rotation.y = rand(0, TAU);
+  g.rotation.y = yaw;
   g.add(slab);
   for (let k = 0; k < 3; k++) {
     const a = (k / 3) * TAU + rand(-0.4, 0.4);
-    const r = rand(0.055, 0.075);
+    const r = rand(0.045, 0.06);
+    const lx = Math.cos(a) * radius * 0.85, lz = Math.sin(a) * radius * 0.72;
     const pebble = new THREE.Mesh(lumpy(2, 0.6), mat);
     pebble.scale.set(r, (SLAB_CLEARANCE + 0.03) / 2, r);
-    pebble.position.set(Math.cos(a) * radius * 0.82, (SLAB_CLEARANCE + 0.03) / 2, Math.sin(a) * radius * 0.7);
+    pebble.position.set(lx, (SLAB_CLEARANCE + 0.03) / 2, lz);
     pebble.castShadow = pebble.receiveShadow = true;
     g.add(pebble);
+    // Same rotation as the group, to get the pebble's ground position.
+    cover.solids.push(
+      cover.x + lx * Math.cos(yaw) + lz * Math.sin(yaw),
+      cover.z - lx * Math.sin(yaw) + lz * Math.cos(yaw),
+      r,
+    );
   }
   cover.object.add(g);
 }
@@ -257,11 +330,12 @@ export class Covers {
     for (const c of this.list) if (c.distanceTo(x, z) < c.radius * 1.1) c.shake(1);
   }
 
-  update(dt: number, lizards: readonly Lizard[]): void {
+  update(dt: number, walkers: readonly Walker[]): void {
     for (const c of this.list) {
-      for (const L of lizards) {
-        if (L.speed > 0.25 && c.distanceTo(L.neck.x, L.neck.y) < c.radius) c.shake(Math.min(0.6, L.speed * 0.3));
+      for (const w of walkers) {
+        if (w.speed > 0.25 && c.distanceTo(w.pos.x, w.pos.y) < c.radius) c.shake(Math.min(0.6, w.speed * 0.3));
       }
+      c.drapeOver(walkers);
       c.update(dt);
     }
   }

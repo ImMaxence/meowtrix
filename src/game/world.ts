@@ -102,11 +102,14 @@ export class World {
     this.updateCamera();
   }
 
-  /** Projects a screen point onto the ground. */
-  pick(clientX: number, clientY: number, out: THREE.Vector3): boolean {
+  /** Projects a screen point onto the ground, or onto a horizontal plane at `height`. */
+  pick(clientX: number, clientY: number, out: THREE.Vector3, height = 0): boolean {
     this.ndc.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
     this.raycaster.setFromCamera(this.ndc, this.camera);
-    return this.raycaster.ray.intersectPlane(this.plane, out) !== null;
+    this.plane.constant = -height;
+    const hit = this.raycaster.ray.intersectPlane(this.plane, out) !== null;
+    this.plane.constant = 0;
+    return hit;
   }
 
   /** Stereo position (-1 left … 1 right) of a ground x coordinate. */

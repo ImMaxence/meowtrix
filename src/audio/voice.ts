@@ -3,8 +3,8 @@ import { rand } from '../game/math';
 type AudioContextCtor = typeof AudioContext;
 
 /**
- * Lizard sounds synthesised with the Web Audio API: gecko-like chirps, a distress squeak
- * and claw ticks on each footfall.
+ * Animal sounds synthesised with the Web Audio API: gecko chirps, mouse squeaks,
+ * claw ticks on each footfall and the buzz of flies.
  */
 export class Voice {
   ctx: AudioContext | null = null;
@@ -58,6 +58,52 @@ export class Voice {
 
   resume(): void {
     void this.ctx?.resume();
+  }
+
+  /** Mouse squeaks: a few short high chirps, or one longer squeal when `alarm`. */
+  mouseSqueak(pan: number, alarm: boolean): void {
+    const ctx = this.ctx;
+    const dest = this.dest(pan);
+    if (!ctx || !dest) return;
+    const count = alarm ? 1 : 1 + Math.floor(Math.random() * 3);
+    let t = ctx.currentTime + 0.02;
+    for (let i = 0; i < count; i++) {
+      const len = alarm ? 0.2 : rand(0.04, 0.07);
+      const f0 = alarm ? 5200 : rand(5500, 7000);
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f0 * 0.85, t);
+      osc.frequency.exponentialRampToValueAtTime(f0, t + len * 0.3);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 0.75, t + len);
+      // Fast vibrato gives the squeak its rough edge.
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = alarm ? 55 : 80;
+      const depth = ctx.createGain();
+      depth.gain.value = f0 * 0.04;
+      lfo.connect(depth).connect(osc.frequency);
+      const g = ctx.createGain();
+      const vol = alarm ? 0.3 : 0.16;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      osc.connect(g).connect(dest);
+      osc.start(t);
+      lfo.start(t);
+      osc.stop(t + len + 0.02);
+      lfo.stop(t + len + 0.02);
+      t += len + rand(0.05, 0.12);
+    }
+    this.loudUntil = performance.now() + ((t - ctx.currentTime) + 0.4) * 1000;
+  }
+
+  /** A continuous fly buzz; created lazily once audio is running. */
+  createBuzz(): Buzz {
+    return new Buzz(this);
+  }
+
+  /** The output bus, or null before init(). */
+  get bus(): AudioNode | null {
+    return this.out;
   }
 
   /** A series of short gecko chirps. */
@@ -152,5 +198,67 @@ export class Voice {
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(f).connect(g).connect(dest);
     src.start(t, Math.random() * 1.5, dur + 0.02);
+  }
+}
+
+/**
+ * The buzz of one fly: a soft, low-passed sawtooth at a house fly's wingbeat (~190 Hz),
+ * with a slow wobble. Silent until the fly takes off.
+ */
+export class Buzz {
+  private nodes: {
+    osc: OscillatorNode;
+    lfo: OscillatorNode;
+    gain: GainNode;
+    pan: StereoPannerNode | null;
+  } | null = null;
+  private readonly base = rand(180, 215);
+
+  constructor(private readonly voice: Voice) {}
+
+  /** `level` 0..1 (0 = landed), `pitch` around 1, `pan` -1..1. */
+  update(level: number, pitch: number, pan: number): void {
+    const ctx = this.voice.ctx;
+    const bus = this.voice.bus;
+    if (!ctx || !bus) return;
+    if (!this.nodes) {
+      if (level < 0.01) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = this.base;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1100;
+      filter.Q.value = 0.7;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      // Tremolo before the level stage, so a landed fly is fully silent.
+      const trem = ctx.createGain();
+      trem.gain.value = 0.75;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = rand(6, 10);
+      const depth = ctx.createGain();
+      depth.gain.value = 0.25;
+      lfo.connect(depth).connect(trem.gain);
+      const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      osc.connect(filter).connect(trem).connect(gain);
+      if (panner) gain.connect(panner).connect(bus);
+      else gain.connect(bus);
+      osc.start();
+      lfo.start();
+      this.nodes = { osc, lfo, gain, pan: panner };
+    }
+    const now = ctx.currentTime;
+    this.nodes.gain.gain.setTargetAtTime(level * 0.045, now, 0.05);
+    this.nodes.osc.frequency.setTargetAtTime(this.base * pitch, now, 0.08);
+    this.nodes.pan?.pan.setTargetAtTime(pan, now, 0.05);
+  }
+
+  dispose(): void {
+    if (!this.nodes) return;
+    this.nodes.osc.stop();
+    this.nodes.lfo.stop();
+    this.nodes.gain.disconnect();
+    this.nodes = null;
   }
 }

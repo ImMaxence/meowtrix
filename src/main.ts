@@ -8,8 +8,8 @@ import { Game } from './game/game';
 import { PointerInput } from './game/input';
 import { World } from './game/world';
 import { setLang, t } from './i18n';
-import { renderOptions } from './menu';
-import { loadSettings, saveSettings, type Settings } from './settings';
+import { Menu } from './menu';
+import { loadSettings, saveSettings, SPEED_FACTOR, type Settings } from './settings';
 
 const HOLD_MS = 1400;
 
@@ -18,7 +18,6 @@ const canvas = $<HTMLCanvasElement>('#scene');
 const menu = $('#menu');
 const playBtn = $<HTMLButtonElement>('#play');
 const exitFsBtn = $<HTMLButtonElement>('#exit-fs');
-const options = $('#options');
 const holdBtn = $<HTMLButtonElement>('#hold');
 const toastEl = $('#toast');
 const installBtn = $<HTMLButtonElement>('#install');
@@ -55,8 +54,9 @@ function start(world: World): void {
 
   const voice = new Voice();
   const game = new Game(world, voice);
-  game.setPopulation(settings.count, settings.skin);
+  game.speedFactor = SPEED_FACTOR[settings.speed];
   game.setCoverMode(settings.covers);
+  game.setPopulation(settings, settings.skin);
 
   const input = new PointerInput(canvas, world, game);
   const wakeLock = new ScreenWakeLock();
@@ -67,8 +67,14 @@ function start(world: World): void {
 
   // --- Menu -------------------------------------------------------------------
 
+  const options = new Menu(
+    { root: menu, tabs: $('#tabs'), panel: $('#tab-panel'), lang: $('#lang') },
+    settings,
+    { change, micSupported },
+  );
+
   const refreshMenu = () => {
-    renderOptions(options, settings, { change, micSupported });
+    options.render();
     playBtn.textContent = t(played ? 'resume' : 'play');
     exitFsBtn.hidden = !isFullscreen();
   };
@@ -78,7 +84,8 @@ function start(world: World): void {
     saveSettings(settings);
     if (key === 'lang') setLang(settings.lang);
     if (key === 'skin') game.setSkin(settings.skin);
-    if (key === 'count') game.setPopulation(settings.count, settings.skin);
+    if (key === 'lizards' || key === 'mice' || key === 'flies') game.setPopulation(settings, settings.skin);
+    if (key === 'speed') game.speedFactor = SPEED_FACTOR[settings.speed];
     if (key === 'covers') game.setCoverMode(settings.covers);
     if (key === 'size') {
       world.setViewSize(settings.size);
@@ -202,7 +209,7 @@ function start(world: World): void {
     game.update(dt);
     if (playing && mic) {
       // Our own sounds and footsteps must not startle the lizards.
-      const gated = performance.now() < voice.loudUntil || game.maxSpeed > 0.8;
+      const gated = performance.now() < voice.loudUntil || game.noisy;
       const level = mic.update(dt, gated);
       if (level) game.noise(level);
     }
