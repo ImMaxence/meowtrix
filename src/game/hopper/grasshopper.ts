@@ -20,8 +20,11 @@ export const GRASSHOPPER_COLORS: readonly GrasshopperColors[] = [
 ];
 
 const STYLE: HopStyle = {
-  length: 0.26, width: 0.04, minHop: 0.06, maxHop: 1.5, perSpeed: 0.36,
-  airTime: [0.12, 0.26], arc: 0.42, turnRate: 8, rest: [0.2, 1.2],
+  length: 0.26, width: 0.04,
+  // Head, body, abdomen, and the big hind knees raised on each side.
+  shape: [[0.09, 0, 0.03, 0.06], [0, 0, 0.035, 0.08], [-0.08, 0, 0.03, 0.05], [-0.07, 0.035, 0.025, 0.08]],
+  minHop: 0.06, maxHop: 1.5, perSpeed: 0.36,
+  airTime: [0.12, 0.26], arc: 0.42, rest: [0.3, 1.4],
 };
 
 const SCALE = STYLE.length;
@@ -107,6 +110,10 @@ export class Grasshopper extends Hopper {
       this.model.add(antenna);
     }
 
+    this.model.add(this.head);
+    this.head.position.set(0, 0.22, 0.37);
+    this.head.scale.setScalar(0.17);
+
     this.model.scale.setScalar(SCALE);
     this.group.add(this.model);
     this.teleport(0, 0, rand(0, TAU));
@@ -131,8 +138,7 @@ export class Grasshopper extends Hopper {
     const long = t >= 0 && this.speed > 2;
     this.wingOpen += ((long && t > 0.1 && t < 0.85 ? 1 : 0) - this.wingOpen) * damp(18, dt);
     this.model.position.y = this.height;
-    this.model.rotation.x = t < 0 ? -0.06 - this.raiseTarget * 0.08 : -0.3 * (1 - t) + 0.15 * t;
-    this.model.rotation.y = this.lookYaw * 0.3;
+    this.model.rotation.x = t < 0 ? -0.06 - this.raiseTarget * 0.08 : -Math.atan(this.slope) * 0.7;
 
     for (const w of this.wings) {
       const side = w.userData.side as number;

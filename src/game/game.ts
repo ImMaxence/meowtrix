@@ -1,11 +1,12 @@
-import { Vector3 } from 'three';
+import * as THREE from 'three';
 import type { Voice } from '../audio/voice';
-import { SPECIES, type AnimalKey, type Theme } from '../catalog';
+import { FETE_COVER, SPECIES, type AnimalKey, type Fete, type Theme } from '../catalog';
 import { Brain, type BrainVoice, type Habitat, type Species } from './brain';
 import { Bug } from './bug/bug';
 import { BEETLE_BUILD, BUG_COLORS, ROACH_BUILD } from './bug/bugs';
 import { Covers, type Cover, type CoverKind } from './covers';
 import type { Creature, Walker } from './creature';
+import { dress } from './fete';
 import { Fish } from './fish/fish';
 import { FISH_BUILDS, FISH_COLORS } from './fish/kinds';
 import { School } from './fish/school';
@@ -34,12 +35,17 @@ type Actor = { brain: Brain } | { flyer: Flyer };
 /** How to make one animal of a species, wearing a given colour. */
 type Spawner = (color: string, offset: number) => Actor;
 
-const tmp = new Vector3();
+const tmp = new THREE.Vector3();
 
 /** All the animals and hiding spots of the current theme, wired to the world, the input and the sound. */
 export class Game implements Habitat {
   speedFactor = 1;
+  /** A paw landed right on an animal (for a little vibration). */
+  onCatch: (() => void) | null = null;
   private theme: Theme = 'land';
+  private fete: Fete = 'none';
+  /** Hiding spots chosen in the menu; a fête adds its own on land. */
+  private chosenCovers: readonly CoverKind[] = [];
   private readonly actors = new Map<AnimalKey, Actor[]>();
   private readonly colors = new Map<AnimalKey, string>();
   private brains: Brain[] = [];
@@ -75,8 +81,16 @@ export class Game implements Habitat {
     for (const key of [...this.actors.keys()]) this.clear(key);
     this.theme = theme;
     this.world.setWater(theme === 'water');
-    this.coverField.setKinds(covers, this.bounds);
+    this.setCovers(covers);
     this.setPopulation(animals, colors);
+  }
+
+  /** Dresses every animal for the fête and adds its hiding spot (stocking, pumpkin, egg) on land. */
+  setFete(fete: Fete): void {
+    this.fete = fete;
+    this.world.setFete(fete);
+    for (const a of [...this.actors.values()].flat()) dress(this.heads(a), fete);
+    this.setCovers(this.chosenCovers);
   }
 
   /** Adds or removes animals of the current theme; a species whose colour changed is recreated. */
@@ -87,7 +101,11 @@ export class Game implements Habitat {
       if (this.colors.get(key) !== colors[key]) this.clear(key);
       this.colors.set(key, colors[key]);
       while (list.length > animals[key]) this.remove(list.pop()!);
-      while (list.length < animals[key]) list.push(this.spawners[key](colors[key], list.length));
+      while (list.length < animals[key]) {
+        const a = this.spawners[key](colors[key], list.length);
+        dress(this.heads(a), this.fete);
+        list.push(a);
+      }
     }
     const all = [...this.actors.values()].flat();
     this.brains = all.flatMap((a) => ('brain' in a ? [a.brain] : []));
@@ -96,7 +114,9 @@ export class Game implements Habitat {
   }
 
   setCovers(kinds: readonly CoverKind[]): void {
-    this.coverField.setKinds(kinds, this.bounds);
+    this.chosenCovers = kinds;
+    const extra = this.theme === 'land' && this.fete !== 'none' ? [FETE_COVER[this.fete]] : [];
+    this.coverField.setKinds([...kinds, ...extra], this.bounds);
   }
 
   /** After the visible area changed. `force` re-lays out covers even if they still fit. */
@@ -119,7 +139,11 @@ export class Game implements Habitat {
     this.coverField.touch(x, z);
     for (const b of this.brains) b.touch(x, z);
     // Flyers may be in the air: test the touch at their altitude.
-    for (const f of this.flyers) if (this.world.pick(sx, sy, tmp, f.pos.y + 0.05)) f.touch(tmp.x, tmp.z);
+    for (const f of this.flyers) {
+      if (!this.world.pick(sx, sy, tmp, f.pos.y + 0.05)) continue;
+      if (f.group.visible && Math.hypot(f.pos.x - tmp.x, f.pos.z - tmp.z) < 0.1) this.onCatch?.();
+      f.touch(tmp.x, tmp.z);
+    }
   }
 
   pointer(x: number, z: number, speed: number, sx: number, sy: number): void {
@@ -148,7 +172,13 @@ export class Game implements Habitat {
     while (list?.length) this.remove(list.pop()!);
   }
 
+  private heads(a: Actor): readonly THREE.Object3D[] {
+    return 'brain' in a ? a.brain.body.heads : a.flyer.heads;
+  }
+
   private remove(a: Actor): void {
+    // Outfits are shared: take them off before the body frees its geometry.
+    dress(this.heads(a), 'none');
     if ('brain' in a) {
       a.brain.dispose();
       a.brain.body.dispose();
@@ -157,8 +187,14 @@ export class Game implements Habitat {
 
   private makeSpawners(): Record<AnimalKey, Spawner> {
     const v = this.voice, pan = (w: Walker) => this.world.panOf(w.bodyX);
-    const steps = (c: Creature, sound: 'step' | 'thud') => {
-      c.onFootfall = (intensity, fx) => (sound === 'step' ? v.step(intensity, this.world.panOf(fx)) : v.thud(intensity, this.world.panOf(fx)));
+    /** Footfall sounds: claw ticks, a frog's plop, or insect feet (a pitch for the ticks). */
+    const steps = (c: Creature, sound: 'step' | 'plop' | number) => {
+      c.onFootfall = (intensity, fx) => {
+        const p = this.world.panOf(fx);
+        if (sound === 'step') v.step(intensity, p);
+        else if (sound === 'plop') v.plop(intensity, p);
+        else v.tick(intensity, p, sound);
+      };
       return c;
     };
     /** A Brain-driven animal whose calls are `cry(pan, alarm)`. */
@@ -169,7 +205,10 @@ export class Game implements Habitat {
       return {
         brain: this.place(b, species, {
           call: () => cry?.(pan(b), false),
-          alarm: () => cry?.(pan(b), true),
+          alarm: () => {
+            cry?.(pan(b), true);
+            this.onCatch?.();
+          },
         }),
       };
     };
@@ -181,30 +220,50 @@ export class Game implements Habitat {
         this.world.scene.add(f.group);
         return { flyer: f };
       };
-    const fish = (key: keyof typeof FISH_BUILDS, species: Species): Spawner =>
-      walker(FISH_COLORS[key], species, (colors) => {
-        const build = FISH_BUILDS[key];
-        if (key === 'sardines') return new School(build, colors, this);
-        const f = new Fish(build, colors, this);
-        f.onSurface = (x, z) => {
-          this.world.ripple(x, z, 0.6);
-          v.bubbles(this.world.panOf(x));
+    /** Fish blow bubbles you can see and hear; big ones splash when they break the surface. */
+    const fish = (key: keyof typeof FISH_BUILDS, species: Species): Spawner => (color, offset) => {
+      const build = FISH_BUILDS[key];
+      const colors = variantAt(FISH_COLORS[key], color, offset);
+      const body = key === 'sardines' ? new School(build, colors, this) : new Fish(build, colors, this);
+      const splashy = key === 'trouts' || key === 'salmons' || key === 'sharks';
+      if (body instanceof Fish) {
+        body.onSurface = (x, z) => {
+          this.world.ripple(x, z, splashy ? 1 : 0.6);
+          if (splashy) v.splash(this.world.panOf(x), 0.6);
+          else v.bubbles(this.world.panOf(x));
         };
-        return f;
-      }, (p, alarm) => (alarm ? v.splash(p) : v.bubbles(p)));
+      }
+      const blow = () => {
+        const m = body.mouth;
+        this.world.bubbles(m.x, m.y, m.z);
+        v.bubbles(this.world.panOf(m.x));
+      };
+      body.onBubble = blow;
+      body.onDart = () => v.swish(this.world.panOf(body.bodyX));
+      return {
+        brain: this.place(body, species, {
+          call: blow,
+          alarm: () => {
+            v.splash(this.world.panOf(body.bodyX));
+            this.onCatch?.();
+          },
+        }),
+      };
+    };
 
     const lizardCry = (p: number, alarm: boolean) => (alarm ? v.squeak(p) : v.chirp(p));
     return {
       lizards: walker(LIZARD_SKINS, SP.LIZARD, (skin) => steps(new Lizard(skin, this.world.maxAnisotropy, LIZARD_BUILD), 'step'), lizardCry),
       longtails: walker(LONGTAIL_SKINS, SP.LONGTAIL, (skin) => steps(new Lizard(skin, this.world.maxAnisotropy, LONGTAIL_BUILD), 'step'), lizardCry),
-      frogs: walker(FROG_COLORS, SP.FROG, (c) => steps(new Frog(c), 'thud'), (p, a) => v.croak(p, a)),
+      frogs: walker(FROG_COLORS, SP.FROG, (c) => steps(new Frog(c), 'plop'), (p, a) => v.croak(p, a)),
       grasshoppers: walker(GRASSHOPPER_COLORS, SP.GRASSHOPPER, (c) => steps(new Grasshopper(c), 'step'), (p, a) => v.chirr(p, a)),
-      roaches: walker(BUG_COLORS.roaches, SP.ROACH, (c) => new Bug(ROACH_BUILD, c)),
-      beetles: walker(BUG_COLORS.beetles, SP.BEETLE, (c) => new Bug(BEETLE_BUILD, c)),
+      roaches: walker(BUG_COLORS.roaches, SP.ROACH, (c) => steps(new Bug(ROACH_BUILD, c), 5500), (p, a) => (a ? v.skitter(p) : v.tick(0.5, p, 5500))),
+      beetles: walker(BUG_COLORS.beetles, SP.BEETLE, (c) => steps(new Bug(BEETLE_BUILD, c), 2800), (p, a) => (a ? v.whirr(p) : v.tick(0.6, p, 2800))),
       mice: mammal(MOUSE_BUILD, COATS.mice, SP.MOUSE, (p, a) => v.mouseSqueak(p, a)),
       squirrels: mammal(SQUIRREL_BUILD, COATS.squirrels, SP.SQUIRREL, (p, a) => v.chatter(p, a)),
       flies: flyer(FLY_COLORS, FLY_STYLE, (c) => new FlyBody(c), () => v.createBuzz()),
-      ladybugs: flyer(LADYBUG_COLORS, LADYBUG_STYLE, (c) => new LadybugBody(c), () => v.createBuzz(rand(85, 110), 0.03)),
+      // A soft, high hum: a low buzz with tremolo sounded like a helicopter.
+      ladybugs: flyer(LADYBUG_COLORS, LADYBUG_STYLE, (c) => new LadybugBody(c), () => v.createBuzz({ base: rand(165, 195), volume: 0.02, wave: 'triangle', tremolo: 0.05, filter: 900 })),
       birds: flyer(BIRD_COLORS, BIRD_STYLE, (c) => new BirdBody(c), () => v.createFlutter()),
       goldfish: fish('goldfish', SP.GOLDFISH),
       kois: fish('kois', SP.KOI),

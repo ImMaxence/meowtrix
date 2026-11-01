@@ -51,6 +51,7 @@ const knee = new THREE.Vector3(), foot = new THREE.Vector3(), hip = new THREE.Ve
 /** A fly: buzzing wings, legs tucked in flight, front legs rubbing together when grooming. */
 export class FlyBody implements FlyerBody {
   readonly group = new THREE.Group();
+  readonly heads: readonly THREE.Object3D[] = [new THREE.Object3D()];
   readonly airPitch = -0.15;
   private flapPhase = 0;
   private readonly wings: THREE.Object3D[] = [];
@@ -83,6 +84,10 @@ export class FlyBody implements FlyerBody {
     part(eyeMat, [0.1, 0.12, 0.1], [-0.1, 0.37, 0.44]);
     part(dark, [0.19, 0.18, 0.25], [0, 0.35, 0.12]);
     part(bellyMat, [0.2, 0.15, 0.3], [0, 0.31, -0.3]);
+    const head = this.heads[0];
+    head.position.set(0, 0.47, 0.42);
+    head.scale.setScalar(0.3);
+    this.group.add(head);
 
     for (const side of [1, -1]) {
       const pivot = new THREE.Group();

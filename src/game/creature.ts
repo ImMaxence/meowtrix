@@ -5,8 +5,16 @@ import { clamp, damp, wrapAngle } from './math';
 /** Called with a ground point (x, z), a radius and the height of the top of the body there. */
 export type SampleFn = (x: number, z: number, radius: number, top: number) => void;
 
+/**
+ * Something that can wear a festive outfit: one anchor per head, at the top of the head,
+ * y up and z toward the nose, scaled to the width of the head.
+ */
+export interface Dressable {
+  readonly heads: readonly THREE.Object3D[];
+}
+
 /** An animal moving on the ground (or swimming), driven by a Brain. */
-export interface Walker {
+export interface Walker extends Dressable {
   readonly group: THREE.Object3D;
   /** Ground position of the steering point (x, z). */
   readonly pos: THREE.Vector2;
@@ -55,6 +63,8 @@ export interface Locomotion {
 /** Shared state and locomotion of the animals driven by a Brain. */
 export abstract class Creature implements Walker {
   readonly group = new THREE.Group();
+  /** Where an outfit goes; spine bodies move it every frame, rigid ones attach it to their model. */
+  readonly head = new THREE.Object3D();
   readonly pos = new THREE.Vector2();
   heading = 0;
   speed = 0;
@@ -81,6 +91,14 @@ export abstract class Creature implements Walker {
   abstract display(): number;
   abstract update(dt: number): void;
   abstract dispose(): void;
+
+  constructor() {
+    this.group.add(this.head);
+  }
+
+  get heads(): readonly THREE.Object3D[] {
+    return [this.head];
+  }
 
   distanceTo(x: number, z: number): number {
     return this.nearest(x, z, NEAREST);
@@ -153,3 +171,11 @@ export function capsuleDistance(
 }
 
 const NEAREST = new THREE.Vector2();
+const HEAD_M = new THREE.Matrix4();
+
+/** Puts a head anchor on top of a spine body: `pos` is the top of the head, the frame gives its orientation. */
+export function placeHead(head: THREE.Object3D, pos: THREE.Vector3, side: THREE.Vector3, up: THREE.Vector3, tan: THREE.Vector3, width: number): void {
+  head.position.copy(pos);
+  head.quaternion.setFromRotationMatrix(HEAD_M.makeBasis(side, up, tan));
+  head.scale.setScalar(width);
+}

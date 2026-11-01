@@ -35,6 +35,8 @@ export interface FlyerPose {
 
 export interface FlyerBody {
   readonly group: THREE.Group;
+  /** Outfit anchors (see Dressable). */
+  readonly heads: readonly THREE.Object3D[];
   /** Pitch of the body in flight. */
   readonly airPitch: number;
   pose(p: FlyerPose, dt: number): void;
@@ -109,6 +111,10 @@ export class Flyer {
 
   get group(): THREE.Group {
     return this.body.group;
+  }
+
+  get heads(): readonly THREE.Object3D[] {
+    return this.body.heads;
   }
 
   /** Taking off or flying: used to keep the microphone from hearing the buzz. */

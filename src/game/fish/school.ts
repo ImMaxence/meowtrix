@@ -19,6 +19,11 @@ export class School extends Creature {
   private readonly slots: [number, number, number][] = [];
   private depth: number;
   private nextDepth = 0;
+  private nextBubble = rand(2, 6);
+  private darting = false;
+  /** See Fish: bubbles now and then, a swish when the school shoots off. */
+  onBubble: (() => void) | null = null;
+  onDart: (() => void) | null = null;
 
   constructor(private readonly build: FishBuild, colors: FishColors, pond: Pond) {
     super();
@@ -34,6 +39,15 @@ export class School extends Creature {
 
   get bodyX(): number {
     return this.pos.x;
+  }
+
+  /** Where bubbles come out: one of the fish. */
+  get mouth(): THREE.Vector3 {
+    return this.fish[Math.floor(Math.random() * SIZE)].mouth;
+  }
+
+  get heads(): readonly THREE.Object3D[] {
+    return this.fish.map((f) => f.head);
   }
 
   teleport(x: number, z: number, heading: number): void {
@@ -81,14 +95,29 @@ export class School extends Creature {
       this.nextDepth = rand(4, 9);
     }
     const panic = this.speed > 2 ? 1 : 0;
+    this.nextBubble -= dt;
+    if (this.nextBubble <= 0) {
+      this.nextBubble = rand(4, 9);
+      this.onBubble?.();
+    }
+    if (!this.darting && panic) {
+      this.darting = true;
+      this.onDart?.();
+    } else if (this.darting && this.speed < 1) this.darting = false;
     this.fish.forEach((f, i) => {
       this.slot(i, tmp);
       const dx = tmp.x - f.pos.x, dz = tmp.y - f.pos.y;
       const d = Math.hypot(dx, dz);
-      // Head for the slot; once there, match the leader.
-      f.targetHeading = d > 0.03 ? Math.atan2(dx, dz) : this.heading;
-      f.targetSpeed = clamp(this.speed * 0.9 + d * 5, 0, 4.5);
-      if (d < 0.03 && this.speed < 0.05) f.targetSpeed = 0;
+      // How far the slot is ahead of the fish (negative: behind it).
+      const ahead = dx * Math.sin(f.heading) + dz * Math.cos(f.heading);
+      if (d < 0.05 || (ahead < 0 && d < 0.3)) {
+        // In place, or the slot is just behind: swim along and let it catch up, never turn around.
+        f.targetHeading = this.heading;
+        f.targetSpeed = this.speed * (ahead < 0 ? 0.7 : 1);
+      } else {
+        f.targetHeading = Math.atan2(dx, dz);
+        f.targetSpeed = Math.min(this.speed + clamp(ahead * 2.5, 0, 1), this.speed * 1.3 + 0.4);
+      }
       f.turnBoost = Math.max(f.turnBoost, this.turnBoost);
       f.depthOverride = this.depth + this.slots[i][2] * (1 + panic);
       f.arousal = this.arousal;

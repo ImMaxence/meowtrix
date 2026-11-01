@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { placeSegment, solveTwoBone } from '../body/limbs';
 import { makeFrame, Spine } from '../body/spine';
 import { Tube } from '../body/tube';
-import { GroundCreature, type Locomotion, type SampleFn } from '../creature';
+import { GroundCreature, placeHead, type Locomotion, type SampleFn } from '../creature';
 import { damp, rand, smoothstep, TAU } from '../math';
 import { BELLY, type LizardBuild } from './profile';
 import { limbBump, skinTextures, type SkinPreset } from './skin';
@@ -418,6 +418,8 @@ export class Lizard extends GroundCreature {
       eye.quaternion.copy(tmpQ);
       eye.scale.set(r, r * Math.max(0.08, this.eyeOpen), r);
     });
+    tmpA.set(f.pos.x, f.pos.y + h * BELLY + h * 0.95, f.pos.z).addScaledVector(f.tan, -w * 0.3);
+    placeHead(this.head, tmpA, f.side, f.up, f.tan, w * 2.2);
 
     this.tongue.visible = this.tongueExt > 0.001;
     if (!this.tongue.visible) return;

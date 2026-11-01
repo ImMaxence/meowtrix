@@ -75,6 +75,7 @@ const hip = new THREE.Vector3(), knee = new THREE.Vector3(), foot = new THREE.Ve
 /** A ladybird: a spotted dome on short legs; in flight the wing cases lift and the wings buzz. */
 export class LadybugBody implements FlyerBody {
   readonly group = new THREE.Group();
+  readonly heads: readonly THREE.Object3D[] = [new THREE.Object3D()];
   readonly airPitch = -0.35;
   private readonly cases: THREE.Object3D[] = [];
   private readonly wings: THREE.Object3D[] = [];
@@ -104,6 +105,10 @@ export class LadybugBody implements FlyerBody {
     part(white, [0.06, 0.04, 0.05], [0.12, 0.22, 0.33]);
     part(white, [0.06, 0.04, 0.05], [-0.12, 0.22, 0.33]);
     part(black, [0.11, 0.08, 0.08], [0, 0.13, 0.43]);
+    const head = this.heads[0];
+    head.position.set(0, 0.27, 0.32);
+    head.scale.setScalar(0.3);
+    this.group.add(head);
 
     for (const side of [1, -1] as const) {
       // Half a dome per wing case, hinged at the front along the seam; the left one is mirrored.

@@ -1,4 +1,4 @@
-import { ALL_SPECIES, COVERS, GROUNDS, SPECIES, THEMES, type AnimalKey, type Theme } from './catalog';
+import { ALL_SPECIES, COVERS, FETES, GROUNDS, SPECIES, THEMES, type AnimalKey, type Fete, type Theme } from './catalog';
 import type { CoverKind } from './game/covers';
 import type { GroundTheme } from './game/ground';
 import type { ViewSize } from './game/world';
@@ -11,6 +11,8 @@ export const SPEED_FACTOR: Record<Speed, number> = { slow: 0.6, normal: 1, fast:
 export interface Settings {
   lang: Lang;
   theme: Theme;
+  /** Christmas, Halloween or Easter: outfits, decorations and weather on top of the theme. */
+  fete: Fete;
   /** How many of each animal; only the current theme's are on screen. */
   animals: Record<AnimalKey, number>;
   /** Chosen colour of each animal (a variant id). */
@@ -22,6 +24,8 @@ export interface Settings {
   /** Sound volume, 0 (off) … 1 (loudest). */
   volume: number;
   mic: boolean;
+  /** Buzz when a paw catches an animal (phones that support it). */
+  vibration: boolean;
 }
 
 const KEY = 'meowtrix.settings';
@@ -41,13 +45,8 @@ const obj = (v: unknown): Saved => (v && typeof v === 'object' ? (v as Saved) : 
 /** Total number of animals of a theme. */
 export const themeTotal = (s: Settings, theme: Theme): number => SPECIES[theme].reduce((n, sp) => n + s.animals[sp.key], 0);
 
-export function loadSettings(): Settings {
-  let saved: Saved = {};
-  try {
-    saved = obj(JSON.parse(localStorage.getItem(KEY) ?? '{}'));
-  } catch {
-    // Storage blocked or corrupted: use defaults.
-  }
+/** Settings from what was saved, with defaults for anything missing or invalid. */
+function fromSaved(saved: Saved): Settings {
   const animals = obj(saved.animals), colors = obj(saved.colors), ground = obj(saved.ground), covers = obj(saved.covers);
   // Earlier versions saved the land animals, skin, ground and covers flat.
   const legacy: Saved = { lizards: saved.lizards ?? saved.count, mice: saved.mice, flies: saved.flies };
@@ -56,6 +55,7 @@ export function loadSettings(): Settings {
   const s = {
     lang: oneOf(saved.lang, ['fr', 'en'] as const, detectLang()),
     theme: oneOf(saved.theme, THEMES, 'land'),
+    fete: oneOf(saved.fete, FETES, 'none'),
     animals: {} as Record<AnimalKey, number>,
     colors: {} as Record<AnimalKey, string>,
     ground: {} as Record<Theme, GroundTheme>,
@@ -65,6 +65,7 @@ export function loadSettings(): Settings {
     // Earlier versions only had sound on or off.
     volume: typeof saved.volume === 'number' && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : saved.sound === false ? 0 : 0.7,
     mic: oneOf(saved.mic, [true, false], false),
+    vibration: oneOf(saved.vibration, [true, false], true),
   } satisfies Settings;
 
   for (const sp of ALL_SPECIES) {
@@ -81,6 +82,21 @@ export function loadSettings(): Settings {
     if (themeTotal(s, theme) === 0) s.animals[SPECIES[theme][0].key] = 1;
   }
   return s;
+}
+
+export function loadSettings(): Settings {
+  let saved: Saved = {};
+  try {
+    saved = obj(JSON.parse(localStorage.getItem(KEY) ?? '{}'));
+  } catch {
+    // Storage blocked or corrupted: use defaults.
+  }
+  return fromSaved(saved);
+}
+
+/** Back to a single green lizard on stone, keeping the device preferences (language, volume, mic, vibration). */
+export function resetSettings(s: Settings): void {
+  Object.assign(s, fromSaved({ lang: s.lang, volume: s.volume, mic: s.mic, vibration: s.vibration }));
 }
 
 export function saveSettings(s: Settings): void {

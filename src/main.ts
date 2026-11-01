@@ -9,9 +9,10 @@ import { PointerInput } from './game/input';
 import { World } from './game/world';
 import { setLang, t } from './i18n';
 import { Menu } from './menu';
-import { loadSettings, saveSettings, SPEED_FACTOR, type Settings } from './settings';
+import { loadSettings, resetSettings, saveSettings, SPEED_FACTOR, type Settings } from './settings';
 
 const HOLD_MS = 1400;
+const REPO = 'https://github.com/ImMaxence/meowtrix';
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const canvas = $<HTMLCanvasElement>('#scene');
@@ -27,6 +28,11 @@ const settings = loadSettings();
 setLang(settings.lang);
 registerServiceWorker();
 $('#version').textContent = `Meowtrix v${__APP_VERSION__}`;
+$<HTMLAnchorElement>('#github').href = REPO;
+// A new GitHub issue, with what helps reproduce the problem already filled in.
+$<HTMLAnchorElement>('#report').href = `${REPO}/issues/new?body=${encodeURIComponent(
+  `\n\n---\nVersion : ${__APP_VERSION__}\nNavigateur : ${navigator.userAgent}\nÉcran : ${window.innerWidth}×${window.innerHeight}`,
+)}`;
 
 let toastTimer = 0;
 function toast(message: string, ms = 4500): void {
@@ -60,6 +66,12 @@ function start(world: World): void {
     game.setTheme(settings.theme, settings.covers[settings.theme], settings.animals, settings.colors);
   };
   applyTheme();
+  game.setFete(settings.fete);
+  const vibrationSupported = typeof navigator.vibrate === 'function';
+  // A short buzz when a paw lands right on an animal.
+  game.onCatch = () => {
+    if (playing && settings.vibration && vibrationSupported) navigator.vibrate(40);
+  };
 
   const input = new PointerInput(canvas, world, game);
   const wakeLock = new ScreenWakeLock();
@@ -71,9 +83,9 @@ function start(world: World): void {
   // --- Menu -------------------------------------------------------------------
 
   const options = new Menu(
-    { root: menu, themes: $('#themes'), tabs: $('#tabs'), panel: $('#tab-panel'), lang: $('#lang') },
+    { root: menu, themes: $('#themes'), fetes: $('#fetes'), tabs: $('#tabs'), panel: $('#tab-panel'), lang: $('#lang') },
     settings,
-    { change, micSupported, previewVolume: () => voice.preview() },
+    { change, micSupported, vibrationSupported, previewVolume: () => voice.preview(), reset },
   );
 
   const refreshMenu = () => {
@@ -98,6 +110,18 @@ function start(world: World): void {
       game.relayout(true);
     }
     if (key === 'ground') world.setGround(settings.ground[settings.theme]);
+    if (key === 'fete') game.setFete(settings.fete);
+    refreshMenu();
+  }
+
+  /** Back to a single green lizard on stone, in the land theme, with no fête. */
+  function reset(): void {
+    resetSettings(settings);
+    saveSettings(settings);
+    world.setViewSize(settings.size);
+    game.speedFactor = SPEED_FACTOR[settings.speed];
+    applyTheme();
+    game.setFete(settings.fete);
     refreshMenu();
   }
 

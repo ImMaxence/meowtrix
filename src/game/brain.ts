@@ -42,6 +42,8 @@ export interface Species {
   displayChance: number;
   /** Chance of a call (chirp, squeak) after idling. */
   callChance: number;
+  /** The display is a song: call when it starts (a frog puffs up its sacs and croaks). */
+  callOnDisplay?: boolean;
 }
 
 
@@ -205,6 +207,7 @@ export class Brain {
         B.targetSpeed = 0;
         B.raiseTarget = 0.4;
         this.dur = B.display() + 0.6;
+        if (this.species.callOnDisplay) this.voice.call();
         break;
       case 'wander':
         this.looking = false;

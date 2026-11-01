@@ -2,6 +2,18 @@ import { rand } from '../game/math';
 
 type AudioContextCtor = typeof AudioContext;
 
+/** The tone of a continuous buzz. */
+export interface BuzzTone {
+  /** Wingbeat frequency (Hz) and loudness. */
+  base: number;
+  volume: number;
+  wave: OscillatorType;
+  /** Wobble of the loudness, 0 … 1: a fly's buzz wavers, a ladybird's hum is steady. */
+  tremolo: number;
+  /** Low-pass cutoff (Hz): lower is softer. */
+  filter: number;
+}
+
 /**
  * Animal sounds synthesised with the Web Audio API: gecko chirps, mouse squeaks, squirrel chatter,
  * birdsong, croaks, chirring, bubbles, footfalls, and the buzz of flies.
@@ -112,39 +124,76 @@ export class Voice {
     this.loudUntil = performance.now() + ((t - ctx.currentTime) + 0.4) * 1000;
   }
 
-  /** A continuous buzz (fly, ladybird); created lazily once audio is running. */
-  createBuzz(base = rand(180, 215), volume = 0.045): Buzz {
-    return new Buzz(this, base, volume);
+  /** A continuous buzz (a fly by default); created lazily once audio is running. */
+  createBuzz(tone: Partial<BuzzTone> = {}): Buzz {
+    return new Buzz(this, { base: rand(180, 215), volume: 0.045, wave: 'sawtooth', tremolo: 0.25, filter: 1100, ...tone });
   }
 
   /** Wingbeats of a bird in flight, plus its song. */
   createFlutter(): Flutter {
-    return new Flutter(this);
+    return new Flutter(this, rand(0.85, 1.15));
   }
 
-  /** A few quick whistled notes, or a sharp alarm call. */
-  tweet(pan: number, alarm: boolean): void {
+  /**
+   * Birdsong around `pitch` (about 1): "tchip" notes sweeping down, a quick trill, or a two-note
+   * whistle; when alarmed, a few sharp ticks.
+   */
+  tweet(pan: number, alarm: boolean, pitch = 1): void {
     const ctx = this.ctx;
     const dest = this.dest(pan);
     if (!ctx || !dest) return;
-    const count = alarm ? 3 : 2 + Math.floor(Math.random() * 5);
-    const f0 = rand(3200, 4800);
+    const f0 = 4200 * pitch;
     let t = ctx.currentTime + 0.02;
-    for (let i = 0; i < count; i++) {
-      const len = alarm ? 0.05 : rand(0.06, 0.14);
+    /** One note: a sine from `a` to `b` Hz, with a slight warble so it doesn't sound electronic. */
+    const note = (a: number, b: number, len: number, vol: number) => {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
-      const a = f0 * rand(0.8, 1.25), b = alarm ? a * 0.8 : a * rand(0.7, 1.4);
       osc.frequency.setValueAtTime(a, t);
       osc.frequency.exponentialRampToValueAtTime(b, t + len);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = rand(55, 80);
+      const depth = ctx.createGain();
+      depth.gain.value = a * 0.025;
+      lfo.connect(depth).connect(osc.frequency);
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.22, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.006, len / 4));
       g.gain.exponentialRampToValueAtTime(0.0001, t + len);
       osc.connect(g).connect(dest);
       osc.start(t);
+      lfo.start(t);
       osc.stop(t + len + 0.02);
-      t += len + (alarm ? 0.04 : rand(0.03, 0.1));
+      lfo.stop(t + len + 0.02);
+    };
+    if (alarm) {
+      for (let i = 0; i < 4; i++) {
+        note(f0 * 1.45, f0 * 1.2, 0.018, 0.2);
+        t += 0.06;
+      }
+    } else {
+      const song = Math.random();
+      if (song < 0.5) {
+        // "Tchip tchip": quick notes dropping in pitch.
+        const count = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          note(f0 * 1.35, f0 * 0.78, 0.055, 0.2);
+          t += rand(0.12, 0.17);
+        }
+      } else if (song < 0.8) {
+        // A trill: fast alternating notes.
+        const count = 7 + Math.floor(Math.random() * 6);
+        for (let i = 0; i < count; i++) {
+          const f = f0 * (i % 2 ? 0.92 : 1.08);
+          note(f * 1.05, f * 0.95, 0.028, 0.15);
+          t += 0.045;
+        }
+      } else {
+        // A clear two-note whistle, high then low.
+        note(f0 * 0.9, f0 * 1.0, 0.16, 0.16);
+        t += 0.2;
+        note(f0 * 0.82, f0 * 0.72, 0.2, 0.14);
+        t += 0.24;
+      }
     }
     this.loudUntil = performance.now() + ((t - ctx.currentTime) + 0.4) * 1000;
   }
@@ -254,6 +303,28 @@ export class Voice {
     this.loudUntil = performance.now() + ((t - ctx.currentTime) + 0.4) * 1000;
   }
 
+  /** A fish shooting off: a quick swish of water. */
+  swish(pan: number): void {
+    const ctx = this.ctx;
+    const dest = this.dest(pan);
+    if (!ctx || !dest || !this.noise) return;
+    const t = ctx.currentTime + 0.01;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 1.4;
+    f.frequency.setValueAtTime(700, t);
+    f.frequency.exponentialRampToValueAtTime(2600, t + 0.18);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    src.connect(f).connect(g).connect(dest);
+    src.start(t, Math.random() * 1.5, 0.3);
+    this.loudUntil = performance.now() + 600;
+  }
+
   /** A splash: a fish darting off, or a paw slapping the water. */
   splash(pan: number, size = 1): void {
     const ctx = this.ctx;
@@ -265,12 +336,65 @@ export class Voice {
     this.loudUntil = performance.now() + 600;
   }
 
-  /** A soft thud: a frog landing. */
-  thud(intensity: number, pan: number): void {
+  /** A frog landing: a short wet "plop" (bright enough for a phone speaker). */
+  plop(intensity: number, pan: number): void {
     const ctx = this.ctx;
     const dest = this.dest(pan);
     if (!ctx || !dest) return;
-    this.burst(dest, ctx.currentTime, 0.06, rand(160, 260), 1, 0.15 + 0.35 * intensity);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(rand(700, 900), t);
+    osc.frequency.exponentialRampToValueAtTime(rand(260, 320), t + 0.07);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12 + 0.2 * intensity, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    osc.connect(g).connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.1);
+    this.burst(dest, t, 0.04, 1200, 1, 0.08 + 0.12 * intensity);
+  }
+
+  /** Tiny insect feet on the ground: a dry tick around `freq` Hz. */
+  tick(intensity: number, pan: number, freq: number): void {
+    const ctx = this.ctx;
+    const dest = this.dest(pan);
+    if (!ctx || !dest) return;
+    this.burst(dest, ctx.currentTime, 0.006 + Math.random() * 0.004, freq * rand(0.85, 1.15), 2, 0.04 + 0.1 * intensity);
+  }
+
+  /** A cockroach dashing off: a rattle of fast little steps. */
+  skitter(pan: number): void {
+    const ctx = this.ctx;
+    const dest = this.dest(pan);
+    if (!ctx || !dest) return;
+    const t = ctx.currentTime;
+    for (let i = 0; i < 14; i++) this.burst(dest, t + i * 0.028 + Math.random() * 0.01, 0.008, rand(4500, 6500), 2, 0.12);
+    this.loudUntil = performance.now() + 700;
+  }
+
+  /** A beetle startled: a short whirr of wings opening under its shell. */
+  whirr(pan: number): void {
+    const ctx = this.ctx;
+    const dest = this.dest(pan);
+    if (!ctx || !dest) return;
+    const t = ctx.currentTime + 0.01;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(rand(110, 140), t);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 700;
+    filter.Q.value = 1.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    osc.connect(filter).connect(g).connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.32);
+    this.loudUntil = performance.now() + 700;
   }
 
   /** The output bus, or null before init(). */
@@ -391,7 +515,7 @@ export class Buzz {
     pan: StereoPannerNode | null;
   } | null = null;
 
-  constructor(private readonly voice: Voice, private readonly base: number, private readonly volume: number) {}
+  constructor(private readonly voice: Voice, private readonly tone: BuzzTone) {}
 
   /** `level` 0..1 (0 = landed), `pitch` around 1, `pan` -1..1. */
   update(level: number, pitch: number, pan: number): void {
@@ -401,21 +525,21 @@ export class Buzz {
     if (!this.nodes) {
       if (level < 0.01) return;
       const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.value = this.base;
+      osc.type = this.tone.wave;
+      osc.frequency.value = this.tone.base;
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 1100;
+      filter.frequency.value = this.tone.filter;
       filter.Q.value = 0.7;
       const gain = ctx.createGain();
       gain.gain.value = 0;
       // Tremolo before the level stage, so a landed fly is fully silent.
       const trem = ctx.createGain();
-      trem.gain.value = 0.75;
+      trem.gain.value = 1 - this.tone.tremolo;
       const lfo = ctx.createOscillator();
       lfo.frequency.value = rand(6, 10);
       const depth = ctx.createGain();
-      depth.gain.value = 0.25;
+      depth.gain.value = this.tone.tremolo;
       lfo.connect(depth).connect(trem.gain);
       const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
       osc.connect(filter).connect(trem).connect(gain);
@@ -426,8 +550,8 @@ export class Buzz {
       this.nodes = { osc, lfo, gain, pan: panner };
     }
     const now = ctx.currentTime;
-    this.nodes.gain.gain.setTargetAtTime(level * this.volume, now, 0.05);
-    this.nodes.osc.frequency.setTargetAtTime(this.base * pitch, now, 0.08);
+    this.nodes.gain.gain.setTargetAtTime(level * this.tone.volume, now, 0.05);
+    this.nodes.osc.frequency.setTargetAtTime(this.tone.base * pitch, now, 0.08);
     this.nodes.pan?.pan.setTargetAtTime(pan, now, 0.05);
   }
 
@@ -447,7 +571,8 @@ export class Buzz {
 export class Flutter {
   private nodes: { src: AudioBufferSourceNode; lfo: OscillatorNode; gain: GainNode; pan: StereoPannerNode | null } | null = null;
 
-  constructor(private readonly voice: Voice) {}
+  /** `pitch`: this bird's voice, around 1. */
+  constructor(private readonly voice: Voice, private readonly pitch: number) {}
 
   update(level: number, pitch: number, pan: number): void {
     const ctx = this.voice.ctx;
@@ -487,7 +612,7 @@ export class Flutter {
   }
 
   call(pan: number, alarm: boolean): void {
-    this.voice.tweet(pan, alarm);
+    this.voice.tweet(pan, alarm, this.pitch);
   }
 
   dispose(): void {

@@ -8,6 +8,7 @@ export const SURFACE = 0.55;
 const SIZE = 80;
 const TILE = 2.5;
 const RIPPLES = 14;
+const BUBBLES = 48;
 
 /** Tileable caustics: bright lines along the edges of a wrapped Voronoi pattern. */
 function causticsTexture(): THREE.CanvasTexture {
@@ -76,6 +77,13 @@ function waveNormals(): THREE.CanvasTexture {
   return tex;
 }
 
+interface Bubble {
+  mesh: THREE.Mesh;
+  speed: number;
+  phase: number;
+  delay: number;
+}
+
 interface Ripple {
   mesh: THREE.Mesh;
   mat: THREE.MeshBasicMaterial;
@@ -93,8 +101,10 @@ export class Water {
   private readonly hazeMat: THREE.MeshBasicMaterial;
   private readonly caustics: THREE.Mesh[] = [];
   private readonly ripples: Ripple[] = [];
+  private readonly bubblePool: Bubble[] = [];
   private t = 0;
   private next = 0;
+  private nextBubble = 0;
 
   constructor() {
     const plane = new THREE.PlaneGeometry(SIZE, SIZE).rotateX(-Math.PI / 2);
@@ -137,8 +147,35 @@ export class Water {
       this.ripples.push({ mesh, mat, age: 1, size: 1 });
     }
 
+    const bubbleGeo = new THREE.SphereGeometry(1, 10, 8);
+    const bubbleMat = new THREE.MeshPhysicalMaterial({
+      color: '#ffffff', transparent: true, opacity: 0.45, roughness: 0.05, clearcoat: 1, depthWrite: false,
+    });
+    for (let i = 0; i < BUBBLES; i++) {
+      const mesh = new THREE.Mesh(bubbleGeo, bubbleMat);
+      mesh.visible = false;
+      this.group.add(mesh);
+      this.bubblePool.push({ mesh, speed: 0, phase: 0, delay: 0 });
+    }
+
     this.group.add(surface, haze, ...this.caustics);
     this.group.visible = false;
+  }
+
+  /** A little stream of bubbles from a fish's mouth, wobbling up and popping at the surface. */
+  bubbles(x: number, y: number, z: number): void {
+    const n = 3 + Math.floor(Math.random() * 4);
+    for (let k = 0; k < n; k++) {
+      const b = this.bubblePool[this.nextBubble];
+      this.nextBubble = (this.nextBubble + 1) % BUBBLES;
+      b.mesh.position.set(x + (Math.random() - 0.5) * 0.02, y, z + (Math.random() - 0.5) * 0.02);
+      b.mesh.scale.setScalar(0.006 + Math.random() * 0.01);
+      b.speed = 0.25 + Math.random() * 0.2;
+      b.phase = Math.random() * TAU;
+      b.delay = k * 0.09;
+      b.mesh.visible = false;
+      b.mesh.userData.live = true;
+    }
   }
 
   setTint(color: string): void {
@@ -160,6 +197,23 @@ export class Water {
     if (!this.group.visible) return;
     this.t += dt;
     const t = this.t;
+    for (const b of this.bubblePool) {
+      if (!b.mesh.userData.live) continue;
+      if (b.delay > 0) {
+        b.delay -= dt;
+        continue;
+      }
+      const p = b.mesh.position;
+      b.mesh.visible = true;
+      p.y += b.speed * dt;
+      p.x += Math.sin(t * 9 + b.phase) * 0.03 * dt;
+      p.z += Math.cos(t * 7 + b.phase) * 0.03 * dt;
+      if (p.y >= SURFACE - 0.005) {
+        b.mesh.visible = false;
+        b.mesh.userData.live = false;
+        this.ripple(p.x, p.z, 0.15);
+      }
+    }
     (this.caustics[0].material as THREE.MeshBasicMaterial).map!.offset.set(t * 0.013, t * 0.008);
     (this.caustics[1].material as THREE.MeshBasicMaterial).map!.offset.set(-t * 0.009, t * 0.011);
     this.caustics.forEach((m, i) => {

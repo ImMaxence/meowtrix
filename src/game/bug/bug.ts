@@ -27,6 +27,8 @@ export class Bug extends Creature {
   private readonly antennae: THREE.Line[] = [];
   private readonly materials: THREE.Material[] = [];
   private walkPhase = 0;
+  /** Which half of the gait cycle: each switch puts a tripod of feet down. */
+  private lastStep = 0;
   private feel = 0;
   private feelLeft = 0;
   private raise = 0;
@@ -93,6 +95,11 @@ export class Bug extends Creature {
       }
     }
 
+    const shield = build.parts[1];
+    this.model.add(this.head);
+    this.head.position.set(0, shield.y + shield.size[1] * 0.9, shield.z);
+    this.head.scale.setScalar(shield.size[0] * 1.5);
+
     this.model.scale.setScalar(build.length);
     this.group.add(this.model);
     this.teleport(0, 0, rand(0, TAU));
@@ -145,6 +152,11 @@ export class Bug extends Creature {
     // Capped so fast legs blur instead of strobing.
     if (moving) this.walkPhase += dt * Math.min(60, (this.speed / this.build.length) * this.build.cadence + Math.abs(this.turnRate) * 3);
     const step = moving ? Math.min(1, this.speed * 3 + Math.abs(this.turnRate) * 0.2) : 0;
+    const half = Math.floor(this.walkPhase / Math.PI);
+    if (half !== this.lastStep) {
+      this.lastStep = half;
+      if (this.speed > 0.05) this.onFootfall?.(Math.min(1, this.speed / 2), this.pos.x);
+    }
 
     this.group.position.set(this.pos.x, 0, this.pos.y);
     this.group.rotation.y = this.heading;

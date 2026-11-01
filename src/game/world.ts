@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import type { Fete } from '../catalog';
+import { FeteFx, MOODS } from './fete';
 import { groundRoughness, makeGroundTexture, WATER_TINT, type GroundTheme, type WaterGround } from './ground';
-import { Water } from './water';
+import { SURFACE, Water } from './water';
 
 export type ViewSize = 'small' | 'medium' | 'large';
 
@@ -28,6 +30,10 @@ export class World {
   readonly bounds: Bounds = { minX: -1, maxX: 1, minZ: -1, maxZ: 1 };
 
   private readonly sun: THREE.DirectionalLight;
+  private readonly sky: THREE.HemisphereLight;
+  /** Created the first time a fête is chosen. */
+  private fx: FeteFx | null = null;
+  private fete: Fete = 'none';
   private readonly groundMat: THREE.MeshStandardMaterial;
   private readonly raycaster = new THREE.Raycaster();
   private readonly plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -51,7 +57,8 @@ export class World {
     this.scene.environmentIntensity = 0.35;
     pmrem.dispose();
 
-    this.scene.add(new THREE.HemisphereLight('#e8f0ff', '#3b3028', 0.7));
+    this.sky = new THREE.HemisphereLight('#e8f0ff', '#3b3028', 0.7);
+    this.scene.add(this.sky);
     this.sun = new THREE.DirectionalLight('#fff1dc', 2.4);
     // Not straight overhead, so the lizard and its legs cast a visible shadow.
     this.sun.position.set(2.4, 5, 2.6);
@@ -95,6 +102,24 @@ export class World {
       this.tintWater();
     }
     if (this.water) this.water.group.visible = on;
+    this.fx?.set(this.fete, !on);
+  }
+
+  /** Light, weather and snow of a fête ('none' for the everyday look). */
+  setFete(fete: Fete): void {
+    this.fete = fete;
+    const m = MOODS[fete];
+    this.sky.color.set(m.sky);
+    this.sky.groundColor.set(m.ground);
+    this.sky.intensity = m.hemi;
+    this.sun.color.set(m.sun);
+    this.sun.intensity = m.sunPower;
+    this.renderer.toneMappingExposure = m.exposure;
+    if (fete !== 'none' && !this.fx) {
+      this.fx = new FeteFx(GROUND_SIZE, TILE);
+      this.scene.add(this.fx.group);
+    }
+    this.fx?.set(fete, !this.underwater);
   }
 
   private tintWater(): void {
@@ -105,6 +130,11 @@ export class World {
     return !!this.water?.group.visible;
   }
 
+  /** A few bubbles rising from (x, y, z) to the surface. */
+  bubbles(x: number, y: number, z: number): void {
+    if (this.underwater) this.water!.bubbles(x, y, z);
+  }
+
   /** Rings on the water surface at (x, z). */
   ripple(x: number, z: number, size = 1): void {
     if (this.underwater) this.water!.ripple(x, z, size);
@@ -112,6 +142,7 @@ export class World {
 
   update(dt: number): void {
     this.water?.update(dt);
+    this.fx?.update(dt, this.bounds, this.underwater ? SURFACE : 0);
   }
 
   setViewSize(size: ViewSize): void {

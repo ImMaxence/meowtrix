@@ -26,8 +26,11 @@ export const FROG_COLORS: readonly FrogColors[] = [
 ];
 
 const STYLE: HopStyle = {
-  length: 0.32, width: 0.09, minHop: 0.08, maxHop: 0.95, perSpeed: 0.38,
-  airTime: [0.16, 0.24], arc: 0.35, turnRate: 6, rest: [0.15, 0.7],
+  length: 0.32, width: 0.09,
+  // Head with its bulging eyes, body, hips, and the folded hind legs on each side.
+  shape: [[0.08, 0, 0.075, 0.13], [0, 0, 0.085, 0.11], [-0.07, 0, 0.08, 0.09], [-0.02, 0.1, 0.05, 0.05]],
+  minHop: 0.1, maxHop: 0.95, perSpeed: 0.38,
+  airTime: [0.2, 0.26], arc: 0.38, rest: [0.35, 1.3],
 };
 
 /** Model units: the frog is about 1 long, nose toward +z. */
@@ -155,6 +158,11 @@ export class Frog extends Hopper {
     this.tongue.visible = false;
     this.model.add(this.tongue);
 
+    // Between the eyes.
+    this.model.add(this.head);
+    this.head.position.set(0, 0.3, 0.22);
+    this.head.scale.setScalar(0.4);
+
     this.model.scale.setScalar(SCALE);
     this.group.add(this.model);
     this.teleport(0, 0, rand(0, TAU));
@@ -179,9 +187,11 @@ export class Frog extends Hopper {
     const leap = t < 0 ? 0 : Math.sin(Math.PI * Math.min(1, t * 1.25));
     const reach = t < 0 ? 0 : smoothstep(0.3, 0.8, t) * (1 - smoothstep(0.9, 1, t));
     this.model.position.y = this.height;
-    // Sitting tilted up; flat and stretched in the air.
-    this.model.rotation.x = -0.28 * (1 - leap) - this.raiseTarget * 0.1 + (t < 0 ? 0 : 0.25 * (t - 0.5));
-    this.model.rotation.y = this.lookYaw * 0.4;
+    // Sitting tilted up; in the air the body follows the arc, nose up then down.
+    const sit = -0.28 - this.raiseTarget * 0.1;
+    this.model.rotation.x = t < 0 ? sit : sit * (1 - leap) - Math.atan(this.slope) * 0.8 * leap;
+    // A little squash on landing.
+    const squash = this.sinceLanding < 0.15 ? Math.sin((this.sinceLanding / 0.15) * Math.PI) * 0.12 : 0;
 
     for (const limb of this.hind) {
       v3(HIND.hip, limb.side, p0);
@@ -202,7 +212,7 @@ export class Frog extends Hopper {
       const r = sac.scale.x + ((puff * 0.085 + 0.001) - sac.scale.x) * damp(14, dt);
       sac.scale.setScalar(r);
     }
-    this.model.scale.set(SCALE * (1 + 0.015 * Math.sin(this.breath)), SCALE, SCALE);
+    this.model.scale.set(SCALE * (1 + 0.015 * Math.sin(this.breath) + squash * 0.5), SCALE * (1 - squash), SCALE);
 
     if (this.tongueT >= 0) {
       this.tongueT += dt / 0.28;

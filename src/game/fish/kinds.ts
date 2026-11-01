@@ -20,6 +20,7 @@ export interface FishBuild {
   dorsal: { from: number; to: number; height: number; pointed: boolean };
   /** Small fin between the dorsal fin and the tail (trout, salmon). */
   adipose: boolean;
+  /** Side fins behind the head: where, how far they reach out, and how long their root is. */
   pectoral: { s: number; length: number; width: number };
   /** Swimming height range above the bottom. */
   depth: readonly [number, number];
@@ -127,7 +128,7 @@ export const FISH_BUILDS = {
     tail: { kind: 'shark', height: 0.14, length: 0.17 },
     dorsal: { from: 0.3, to: 0.44, height: 0.13, pointed: true },
     adipose: false,
-    pectoral: { s: 0.24, length: 0.17, width: 0.08 },
+    pectoral: { s: 0.25, length: 0.16, width: 0.075 },
     depth: [0.1, 0.36],
     motion: { accel: 4, decel: 1.5, turnBase: 1, turnPerSpeed: 1.3, lookLimit: 0.15 },
     beat: [0.7, 1.2], swing: 0.07,

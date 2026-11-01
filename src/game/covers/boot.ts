@@ -5,7 +5,10 @@ import { pick, type Cover } from './cover';
 
 /** Rubber colours: green, yellow, black, red, navy. */
 const RUBBER = ['#3f6b36', '#d6a92c', '#2b2b2a', '#a1322a', '#2c3d5c'];
+/** Christmas stocking wool: red or green, with white stripes. */
+const WOOL = ['#b3202a', '#1f6b3a'];
 const MUD = new THREE.Color('#5a4630');
+const SNOW_WHITE = new THREE.Color('#f4f1ea');
 
 /** Shaft radius and length, foot length (boot standing: shaft along y, toe along z), before scaling. */
 const R = 0.13;
@@ -14,16 +17,21 @@ const FOOT = 0.37;
 /** A big old boot: a lizard or a mouse fits all the way into the shaft. */
 export const BOOT_SCALE = 1.7;
 
-/** Darkens the boot with mud near the sole and in random splashes. */
-function muddy(geo: THREE.BufferGeometry, base: THREE.Color, seed: number): THREE.BufferGeometry {
+/** Darkens the boot with mud near the sole and in random splashes; a stocking gets white stripes instead. */
+function paint(geo: THREE.BufferGeometry, base: THREE.Color, seed: number, stocking: boolean): THREE.BufferGeometry {
   const p = geo.attributes.position;
   const colors = new Float32Array(p.count * 3);
   const c = new THREE.Color();
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    const splash = smoothstep(0.62, 0.75, noise3(x * 9 + seed, y * 9, z * 9, 41));
-    const mud = Math.max(smoothstep(0.12, 0.0, y), splash * 0.8);
-    c.copy(base).multiplyScalar(0.85 + 0.25 * noise3(x * 30, y * 30, z * 30, 42)).lerp(MUD, mud * 0.85);
+    if (stocking) {
+      const stripe = smoothstep(0.55, 0.7, Math.sin(y * 38)) * smoothstep(0.12, 0.2, y);
+      c.copy(base).multiplyScalar(0.9 + 0.15 * noise3(x * 40, y * 40, z * 40, 43)).lerp(SNOW_WHITE, stripe);
+    } else {
+      const splash = smoothstep(0.62, 0.75, noise3(x * 9 + seed, y * 9, z * 9, 41));
+      const mud = Math.max(smoothstep(0.12, 0.0, y), splash * 0.8);
+      c.copy(base).multiplyScalar(0.85 + 0.25 * noise3(x * 30, y * 30, z * 30, 42)).lerp(MUD, mud * 0.85);
+    }
     c.toArray(colors, i * 3);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -61,20 +69,24 @@ const SOLE_PROFILE = [
 ] as const;
 
 /**
- * An old rubber boot lying on its side. Animals crawl into the shaft through the opening,
- * so only their tail sticks out.
+ * An old rubber boot lying on its side (or, at Christmas, a striped stocking with a furry cuff).
+ * Animals crawl into the shaft through the opening, so only their tail sticks out.
  */
-export function makeBoot(cover: Cover): void {
+export function makeBoot(cover: Cover, stocking = false): void {
   const seed = rand(0, 100);
-  const base = new THREE.Color(pick(RUBBER));
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: THREE.DoubleSide });
-  const soleMat = new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 0.9 });
+  const base = new THREE.Color(pick(stocking ? WOOL : RUBBER));
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: stocking ? 0.95 : 0.55, side: THREE.DoubleSide });
+  const soleMat = stocking
+    ? new THREE.MeshStandardMaterial({ color: SNOW_WHITE, roughness: 1 })
+    : new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 0.9 });
 
-  const shaftGeo = new THREE.CylinderGeometry(R, R * 0.92, SHAFT, 32, 6, true);
+  const shaftGeo = new THREE.CylinderGeometry(R, R * 0.92, SHAFT, 32, stocking ? 40 : 6, true);
   shaftGeo.translate(0, SHAFT / 2 + 0.08, 0);
-  const shaft = new THREE.Mesh(muddy(shaftGeo, base, seed), mat);
-  const rim = new THREE.Mesh(muddy(new THREE.TorusGeometry(R, 0.012, 8, 32).rotateX(Math.PI / 2).translate(0, SHAFT + 0.08, 0), base, seed), mat);
-  const foot = new THREE.Mesh(muddy(extrudeProfile(FOOT_PROFILE, 0.23, 0.035), base, seed), mat);
+  const shaft = new THREE.Mesh(paint(shaftGeo, base, seed, stocking), mat);
+  const cuff = stocking ? 0.05 : 0.012;
+  const rimGeo = new THREE.TorusGeometry(R + cuff * 0.4, cuff, 10, 32).rotateX(Math.PI / 2).translate(0, SHAFT + 0.08 - cuff * 0.5, 0);
+  const rim = new THREE.Mesh(stocking ? rimGeo : paint(rimGeo, base, seed, false), stocking ? soleMat : mat);
+  const foot = new THREE.Mesh(paint(extrudeProfile(FOOT_PROFILE, 0.23, 0.035), base, seed, stocking), mat);
   foot.position.y = 0.02;
   const sole = new THREE.Mesh(extrudeProfile(SOLE_PROFILE, 0.235, 0.008), soleMat);
 

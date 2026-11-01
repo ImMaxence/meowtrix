@@ -4,8 +4,10 @@ import { clamp, rand } from '../math';
 import type { Bounds } from '../world';
 import { BOOT_SCALE, makeBoot } from './boot';
 import { Cover, type CoverKind } from './cover';
+import { makeEgg } from './egg';
 import { makeLeaf } from './leaf';
 import { makeLilies } from './lily';
+import { makePumpkin } from './pumpkin';
 import { makeStone } from './stone';
 import { makeTulips } from './tulip';
 import { GRASS, makeTuft, SEAWEED } from './tuft';
@@ -22,6 +24,9 @@ const RADIUS: Record<CoverKind, () => number> = {
   lily: () => 0.32,
   rock: () => rand(0.36, 0.44),
   weed: () => 0.26,
+  stocking: () => 0.42 * BOOT_SCALE,
+  pumpkin: () => 0.42,
+  egg: () => 0.36,
 };
 
 const SHAKES: ReadonlySet<CoverKind> = new Set<CoverKind>(['leaf', 'grass', 'tulip', 'lily', 'weed']);
@@ -36,6 +41,9 @@ function build(cover: Cover): void {
     case 'stone': makeStone(cover, cover.radius); break;
     case 'rock': makeStone(cover, cover.radius, true); break;
     case 'boot': makeBoot(cover); break;
+    case 'stocking': makeBoot(cover, true); break;
+    case 'pumpkin': makePumpkin(cover); break;
+    case 'egg': makeEgg(cover); break;
     case 'grass': makeTuft(cover, GRASS); break;
     case 'weed': makeTuft(cover, SEAWEED); break;
     case 'tulip': makeTulips(cover); break;

@@ -14,6 +14,18 @@ import type { Variant } from './game/variant';
 export type Theme = 'land' | 'water';
 export const THEMES: readonly Theme[] = ['land', 'water'];
 
+/** A festive look on top of the theme: outfits, decorations and weather. */
+export type Fete = 'none' | 'christmas' | 'halloween' | 'easter';
+export const FETES: readonly Fete[] = ['none', 'christmas', 'halloween', 'easter'];
+
+export const FETE_ICON: Record<Exclude<Fete, 'none'>, string> = { christmas: '🎄', halloween: '🎃', easter: '🐣' };
+
+/** The hiding spot each fête adds on land, on top of the chosen ones. */
+export const FETE_COVER: Record<Exclude<Fete, 'none'>, CoverKind> = { christmas: 'stocking', halloween: 'pumpkin', easter: 'egg' };
+
+/** Same limit for every species. */
+const MAX = 4;
+
 export type AnimalKey =
   | 'lizards' | 'longtails' | 'frogs' | 'flies' | 'ladybugs' | 'beetles' | 'grasshoppers' | 'roaches'
   | 'mice' | 'squirrels' | 'birds'
@@ -31,30 +43,30 @@ export interface SpeciesInfo {
   variants: readonly Variant[];
 }
 
-const info = (key: AnimalKey, icon: string, max: number, group: Group, variants: readonly Variant[]): SpeciesInfo =>
-  ({ key, icon, max, group, variants });
+const info = (key: AnimalKey, icon: string, group: Group, variants: readonly Variant[]): SpeciesInfo =>
+  ({ key, icon, max: MAX, group, variants });
 
 export const SPECIES: Record<Theme, readonly SpeciesInfo[]> = {
   land: [
-    info('lizards', '🦎', 4, 'reptiles', LIZARD_SKINS),
-    info('longtails', '🦎', 3, 'reptiles', LONGTAIL_SKINS),
-    info('frogs', '🐸', 3, 'reptiles', FROG_COLORS),
-    info('flies', '🪰', 3, 'bugs', FLY_COLORS),
-    info('ladybugs', '🐞', 4, 'bugs', LADYBUG_COLORS),
-    info('beetles', '🪲', 3, 'bugs', BUG_COLORS.beetles),
-    info('grasshoppers', '🦗', 3, 'bugs', GRASSHOPPER_COLORS),
-    info('roaches', '🪳', 4, 'bugs', BUG_COLORS.roaches),
-    info('mice', '🐭', 3, 'small', COATS.mice),
-    info('squirrels', '🐿️', 2, 'small', COATS.squirrels),
-    info('birds', '🐦', 3, 'small', BIRD_COLORS),
+    info('lizards', '🦎', 'reptiles', LIZARD_SKINS),
+    info('longtails', '🦎', 'reptiles', LONGTAIL_SKINS),
+    info('frogs', '🐸', 'reptiles', FROG_COLORS),
+    info('flies', '🪰', 'bugs', FLY_COLORS),
+    info('ladybugs', '🐞', 'bugs', LADYBUG_COLORS),
+    info('beetles', '🪲', 'bugs', BUG_COLORS.beetles),
+    info('grasshoppers', '🦗', 'bugs', GRASSHOPPER_COLORS),
+    info('roaches', '🪳', 'bugs', BUG_COLORS.roaches),
+    info('mice', '🐭', 'small', COATS.mice),
+    info('squirrels', '🐿️', 'small', COATS.squirrels),
+    info('birds', '🐦', 'small', BIRD_COLORS),
   ],
   water: [
-    info('goldfish', '🐠', 5, 'fish', FISH_COLORS.goldfish),
-    info('kois', '🎏', 3, 'fish', FISH_COLORS.kois),
-    info('sardines', '🐟', 2, 'fish', FISH_COLORS.sardines),
-    info('trouts', '🐟', 3, 'fish', FISH_COLORS.trouts),
-    info('salmons', '🐟', 2, 'fish', FISH_COLORS.salmons),
-    info('sharks', '🦈', 2, 'fish', FISH_COLORS.sharks),
+    info('goldfish', '🐠', 'fish', FISH_COLORS.goldfish),
+    info('kois', '🎏', 'fish', FISH_COLORS.kois),
+    info('sardines', '🐟', 'fish', FISH_COLORS.sardines),
+    info('trouts', '🐟', 'fish', FISH_COLORS.trouts),
+    info('salmons', '🐟', 'fish', FISH_COLORS.salmons),
+    info('sharks', '🦈', 'fish', FISH_COLORS.sharks),
   ],
 };
 

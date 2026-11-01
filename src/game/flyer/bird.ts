@@ -99,6 +99,7 @@ const TAIL_GEO = (() => {
 /** A small songbird: hops and pecks on the ground, folds its wings on its back, flaps away. */
 export class BirdBody implements FlyerBody {
   readonly group = new THREE.Group();
+  readonly heads: readonly THREE.Object3D[] = [new THREE.Object3D()];
   readonly airPitch = -0.08;
   private readonly head = new THREE.Group();
   private readonly wings: THREE.Object3D[] = [];
@@ -156,6 +157,10 @@ export class BirdBody implements FlyerBody {
       this.head.add(eye);
     }
     this.head.position.set(0, 0.46, 0.26);
+    const head = this.heads[0];
+    head.position.set(0, 0.115, 0.01);
+    head.scale.setScalar(0.24);
+    this.head.add(head);
     this.group.add(this.head);
 
     const tailMesh = new THREE.Mesh(TAIL_GEO, tailMat);

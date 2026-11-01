@@ -3,7 +3,7 @@ import { curve } from '../body/curve';
 import { placeSegment, solveTwoBone } from '../body/limbs';
 import { makeFrame, Spine } from '../body/spine';
 import { Tube } from '../body/tube';
-import { GroundCreature, type SampleFn } from '../creature';
+import { GroundCreature, placeHead, type SampleFn } from '../creature';
 import { damp, rand, smoothstep, TAU } from '../math';
 import { noise3 } from '../noise';
 import type { Coat, LegSize, MammalBuild } from './builds';
@@ -374,6 +374,9 @@ export class Mammal extends GroundCreature {
 
     const e = this.spine.sample(b.sEar, this.frame);
     const ew = this.hw(b.sEar), eh = this.hh(b.sEar);
+    // The hat sits between the ears.
+    tmpA.set(e.pos.x, e.pos.y + eh * b.belly + eh * 0.95, e.pos.z);
+    placeHead(this.head, tmpA, e.side, e.up, e.tan, ew * 2);
     for (const { group, side } of this.ears) {
       group.position.set(e.pos.x, e.pos.y + eh * b.belly, e.pos.z)
         .addScaledVector(e.side, side * ew * b.ear.side)

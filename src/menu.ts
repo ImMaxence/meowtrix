@@ -1,4 +1,4 @@
-import { COVERS, GROUNDS, SPECIES, THEMES, type SpeciesInfo, type Theme } from './catalog';
+import { COVERS, FETE_ICON, FETES, GROUNDS, SPECIES, THEMES, type SpeciesInfo, type Theme } from './catalog';
 import { groundPreview } from './game/ground';
 import { t, type Key, type Lang } from './i18n';
 import { themeTotal, type Settings } from './settings';
@@ -21,13 +21,17 @@ const tk = (key: string): string => t(key as Key);
 export interface MenuHandlers {
   change: <K extends keyof Settings>(key: K, value: Settings[K], rerender?: boolean) => void;
   micSupported: boolean;
+  vibrationSupported: boolean;
   /** Plays a short sound at the chosen volume. */
   previewVolume: () => void;
+  /** Everything back to the defaults (a green lizard on stone). */
+  reset: () => void;
 }
 
 interface Elements {
   root: HTMLElement;
   themes: HTMLElement;
+  fetes: HTMLElement;
   tabs: HTMLElement;
   panel: HTMLElement;
   lang: HTMLElement;
@@ -51,6 +55,9 @@ function button(className: string, focus: string, onClick: () => void, text = ''
 /** The options panel: language toggle, land/water switch, tabs and the active tab's controls. */
 export class Menu {
   private tab: Tab = 'animals';
+  /** The reset button asks for a second tap before wiping everything. */
+  private confirmReset = false;
+  private confirmTimer = 0;
 
   constructor(private readonly els: Elements, private readonly s: Settings, private readonly h: MenuHandlers) {
     try {
@@ -66,6 +73,7 @@ export class Menu {
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.focus;
     this.renderLang();
     this.renderThemes();
+    this.renderFetes();
     this.renderTabs();
     this.els.panel.replaceChildren(...this.content());
     if (focused) this.els.root.querySelector<HTMLElement>(`[data-focus="${focused}"]`)?.focus();
@@ -110,6 +118,22 @@ export class Menu {
         });
         b.setAttribute('aria-pressed', String(this.s.theme === theme));
         b.append(h('span', 'theme-icon', THEME_ICON[theme]), h('span', 'theme-label', tk(`theme_${theme}`)));
+        return b;
+      }),
+    );
+  }
+
+  /** Christmas, Halloween, Easter: tap one to dress everything up, tap it again to go back. */
+  private renderFetes(): void {
+    const group = this.els.fetes;
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', t('fete'));
+    group.replaceChildren(
+      ...FETES.filter((f) => f !== 'none').map((fete) => {
+        const on = this.s.fete === fete;
+        const b = button(`fete fete-${fete}`, `fete-${fete}`, () => this.h.change('fete', on ? 'none' : fete));
+        b.setAttribute('aria-pressed', String(on));
+        b.append(h('span', 'fete-icon', FETE_ICON[fete]), h('span', 'fete-label', tk(`fete_${fete}`)));
         return b;
       }),
     );
@@ -236,7 +260,29 @@ export class Menu {
       this.volume(),
     ];
     if (this.h.micSupported) items.push(this.toggle('mic', 'micHelp'));
+    if (this.h.vibrationSupported) items.push(this.toggle('vibration', 'vibrationHelp'));
+    items.push(this.resetButton());
     return items;
+  }
+
+  private resetButton(): HTMLElement {
+    const b = button(`reset${this.confirmReset ? ' is-armed' : ''}`, 'reset', () => {
+      clearTimeout(this.confirmTimer);
+      if (this.confirmReset) {
+        this.confirmReset = false;
+        this.h.reset();
+        return;
+      }
+      this.confirmReset = true;
+      this.render();
+      this.confirmTimer = window.setTimeout(() => {
+        this.confirmReset = false;
+        this.render();
+      }, 4000);
+    }, t(this.confirmReset ? 'resetConfirm' : 'reset'));
+    const wrap = h('div', 'reset-wrap');
+    wrap.append(b, h('p', 'opt-help', t('resetHelp')));
+    return wrap;
   }
 
   private section(title: Key, body: HTMLElement): HTMLElement {
@@ -288,7 +334,7 @@ export class Menu {
     return sec;
   }
 
-  private toggle(key: 'mic', help: Key): HTMLElement {
+  private toggle(key: 'mic' | 'vibration', help: Key): HTMLElement {
     const on = this.s[key];
     const b = button('switch-row', `switch-${key}`, () => this.h.change(key, !on));
     b.setAttribute('role', 'switch');

@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import type { Walker } from '../creature';
 import { rand } from '../math';
 
-/** Land: leaf, stone, boot, grass, tulip. Water: lily pads, rock, seaweed. */
-export type CoverKind = 'leaf' | 'stone' | 'boot' | 'grass' | 'tulip' | 'lily' | 'rock' | 'weed';
+/** Land: leaf, stone, boot, grass, tulip. Water: lily pads, rock, seaweed. Fêtes: stocking, pumpkin, egg. */
+export type CoverKind = 'leaf' | 'stone' | 'boot' | 'grass' | 'tulip' | 'lily' | 'rock' | 'weed' | 'stocking' | 'pumpkin' | 'egg';
 
 /** What makes a cover come alive: draping over bodies, parting grass, swaying. */
 export interface CoverPart {

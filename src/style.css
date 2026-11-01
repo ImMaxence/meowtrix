@@ -203,6 +203,51 @@ button:focus-visible {
   font-size: 1.3rem;
 }
 
+.fetes {
+  display: flex;
+  gap: 6px;
+  margin: 0 16px 10px;
+}
+
+.fete {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.fete[aria-pressed='true'] {
+  color: var(--text);
+}
+
+.fete-christmas[aria-pressed='true'] {
+  border-color: #ff6b6b;
+  background: rgba(220, 40, 50, 0.22);
+}
+
+.fete-halloween[aria-pressed='true'] {
+  border-color: #ffa040;
+  background: rgba(255, 140, 30, 0.2);
+}
+
+.fete-easter[aria-pressed='true'] {
+  border-color: #f5a8d0;
+  background: rgba(240, 160, 210, 0.2);
+}
+
+.fete-icon {
+  font-size: 1.1rem;
+}
+
 /* --- Tabs --------------------------------------------------------------- */
 
 .tabs {
@@ -544,6 +589,28 @@ button:focus-visible {
   border-radius: 8px;
 }
 
+.reset-wrap {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.reset {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 140, 120, 0.5);
+  border-radius: var(--radius);
+  background: rgba(255, 120, 100, 0.08);
+  color: #ffb4a6;
+  font-weight: 800;
+}
+
+.reset.is-armed {
+  border-color: #ff8a75;
+  background: rgba(255, 110, 90, 0.28);
+  color: #fff;
+}
+
 .switch-row {
   display: flex;
   align-items: center;
@@ -654,12 +721,62 @@ button:focus-visible {
   color: #ffb4a6;
 }
 
+.foot-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.gh-link {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+
+.gh-link svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.gh-link:hover,
+.gh-link:focus-visible {
+  color: var(--text);
+}
+
 .version {
-  margin: 8px 0 0;
   color: var(--muted);
   font-size: 0.7rem;
   opacity: 0.6;
   font-variant-numeric: tabular-nums;
+}
+
+.report-link {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.report-link:hover,
+.report-link:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+a:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
 }
 
 .note {

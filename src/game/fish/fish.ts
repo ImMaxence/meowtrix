@@ -3,7 +3,7 @@ import { curve } from '../body/curve';
 import { makeFrame, Spine } from '../body/spine';
 import { Tube } from '../body/tube';
 import type { Cover } from '../covers';
-import { GroundCreature, type SampleFn } from '../creature';
+import { GroundCreature, placeHead, type SampleFn } from '../creature';
 import { clamp, damp, rand, smoothstep, TAU } from '../math';
 import { noise3 } from '../noise';
 import { SURFACE } from '../water';
@@ -118,6 +118,28 @@ function finGeometry(points: readonly (readonly [number, number])[], base: strin
   return geo;
 }
 
+/**
+ * A pectoral fin seen from above, for the right side: x outward, z toward the nose. Its root runs
+ * along the body; a shark's is a long swept-back triangle, other fish have a rounded paddle.
+ */
+function pectoralGeometry(span: number, chord: number, shark: boolean, base: string, tip: string | undefined): THREE.BufferGeometry {
+  const pts: [number, number][] = shark
+    ? [[0, 0], [span * 0.55, -chord * 0.55], [span, -chord * 1.35], [span * 0.82, -chord * 1.45], [span * 0.3, -chord * 1.05], [0, -chord]]
+    : [[0, 0], [span * 0.6, -chord * 0.15], [span, -chord * 0.7], [span * 0.75, -chord * 1.15], [span * 0.25, -chord * 1.05], [0, -chord * 0.8]];
+  const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z)));
+  // Shape y becomes z (forward); the fin lies flat.
+  const geo = new THREE.ShapeGeometry(shape, 6).rotateX(Math.PI / 2);
+  const p = geo.attributes.position;
+  const colors = new Float32Array(p.count * 3);
+  const a = new THREE.Color(base), b = new THREE.Color(tip ?? base), col = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    col.copy(a).lerp(b, smoothstep(0.55, 0.95, p.getX(i) / span));
+    col.toArray(colors, i * 3);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geo;
+}
+
 function tailPoints(kind: FishBuild['tail']['kind'], h: number, l: number): [number, number][] {
   switch (kind) {
     case 'fork': return [[0, h * 0.18], [l * 0.85, h], [l, h * 0.92], [l * 0.55, 0], [l, -h * 0.92], [l * 0.85, -h], [0, -h * 0.18]];
@@ -128,6 +150,7 @@ function tailPoints(kind: FishBuild['tail']['kind'], h: number, l: number): [num
 
 const tmpA = new THREE.Vector3();
 const tmpM = new THREE.Matrix4();
+const MOUTH = new THREE.Vector3();
 const back = new THREE.Vector3();
 
 /** Where fish look for shade: the covers of the water theme. */
@@ -144,6 +167,10 @@ export class Fish extends GroundCreature {
   protected readonly spine: Spine;
   /** Called when the mouth breaks the surface (rings on the water). */
   onSurface: ((x: number, z: number) => void) | null = null;
+  /** Now and then while swimming: a few bubbles. */
+  onBubble: (() => void) | null = null;
+  /** Shooting off: a swish in the water. */
+  onDart: (() => void) | null = null;
   /** Depth chosen by a school instead of the fish itself. */
   depthOverride: number | null = null;
 
@@ -156,6 +183,8 @@ export class Fish extends GroundCreature {
   private gulpLeft = 0;
   private gulped = false;
   private wiggle = 0;
+  private nextBubble = rand(2, 8);
+  private darting = false;
   private readonly frame = makeFrame();
   private readonly hw: (s: number) => number;
   private readonly hh: (s: number) => number;
@@ -210,10 +239,9 @@ export class Fish extends GroundCreature {
     }
     const p = b.pectoral;
     for (const side of [1, -1]) {
-      const fin = new THREE.Mesh(
-        finGeometry([[0, 0], [p.length * 0.5, p.width], [p.length, p.width * 0.4], [p.length * 0.8, -p.width * 0.2]], colors.fins, colors.finTips),
-        finMat,
-      );
+      const fin = new THREE.Mesh(pectoralGeometry(p.length, p.width, b.tail.kind === 'shark', colors.fins, colors.finTips), finMat);
+      // The left fin is the right one mirrored.
+      fin.scale.x = side;
       fin.userData.side = side;
       this.pectorals.push(fin);
       const eye = new THREE.Mesh(new THREE.SphereGeometry(b.eye, 10, 8), eyeMat);
@@ -225,6 +253,11 @@ export class Fish extends GroundCreature {
       this.group.add(m);
     }
     this.teleport(0, 0, rand(0, TAU));
+  }
+
+  /** Tip of the snout, at swimming depth: where bubbles come out. */
+  get mouth(): THREE.Vector3 {
+    return MOUTH.copy(this.spine.frames[0].pos).setY(this.depth);
   }
 
   /** A flick of the pectoral fins and a little wiggle. */
@@ -259,6 +292,15 @@ export class Fish extends GroundCreature {
     this.wiggle = Math.max(0, this.wiggle - dt * 2);
     this.gulpLeft = Math.max(0, this.gulpLeft - dt);
     this.updateDepth(dt);
+    this.nextBubble -= dt;
+    if (this.nextBubble <= 0) {
+      this.nextBubble = rand(5, 11);
+      this.onBubble?.();
+    }
+    if (!this.darting && this.speed > b.length * 2.2) {
+      this.darting = true;
+      this.onDart?.();
+    } else if (this.darting && this.speed < b.length) this.darting = false;
 
     const rate = b.beat[0] + b.beat[1] * (this.speed / b.length) + this.wiggle * 3;
     this.phase += dt * rate;
@@ -336,12 +378,16 @@ export class Fish extends GroundCreature {
     const beat = this.flutter * 0.5 * Math.sin(this.time * 9) + this.wiggle * 0.4 * Math.sin(this.time * 20);
     for (const fin of this.pectorals) {
       const side = fin.userData.side as number;
-      orient(fin);
-      fin.position.copy(pPos).addScaledVector(f.side, side * w * 0.85);
-      // Laid flat, spread out sideways and swept back (the fin frame's x points inward), flapping when hovering.
-      fin.rotateY(-side * (0.9 - 0.4 * Math.min(1, this.speed / b.length)));
-      fin.rotateZ(side * (Math.PI / 2 - 0.3 + beat));
+      fin.quaternion.setFromRotationMatrix(tmpM.makeBasis(f.side, f.up, f.tan));
+      fin.position.copy(pPos).addScaledVector(f.side, side * w * 0.8);
+      // Folded back a little when swimming fast, drooping slightly, flapping when hovering.
+      fin.rotateY(side * 0.35 * Math.min(1, this.speed / (b.length * 2)));
+      fin.rotateZ(-side * (0.25 + beat));
     }
+
+    const hs = b.sEye + 0.05;
+    const hPos = at(hs, 0.95).clone();
+    placeHead(this.head, hPos, f.side, f.up, f.tan, this.hw(hs) * 2.4);
 
     const ePos = at(b.sEye, 0.15).clone();
     const ew = this.hw(b.sEye);

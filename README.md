@@ -3,14 +3,19 @@
 Un site plein écran pour faire jouer les chats : des animaux en 3D (Three.js) qui se promènent,
 se cachent, et détalent quand une patte les touche. Deux thèmes : **Terre** (lézards, grenouilles,
 insectes, souris, écureuils, oiseaux) et **Eau** (poissons rouges, carpes koï, sardines en banc,
-truites, saumons, bébés requins). Les sons sont synthétisés en direct (Web Audio API), avec un
-réglage du volume, et, si on l'autorise, le micro fait sursauter les animaux aux bruits de la pièce.
+truites, saumons, bébés requins), à habiller pour **Noël**, **Halloween** ou **Pâques**. Les sons
+sont synthétisés en direct (Web Audio API), avec un réglage du volume, et, si on l'autorise, le
+micro fait sursauter les animaux aux bruits de la pièce.
 
 **👉 Jouer : [meowtrix.mbonnici.fr](https://meowtrix.mbonnici.fr/)**
 
 ![Lézards, grenouille, insectes autour d'une feuille, d'une pierre, d'une touffe d'herbe et d'une vieille botte](docs/screenshots/terre.png)
 
 ![Thème Eau : carpes koï, poisson rouge, truite et banc de sardines entre nénuphars, rocher et algues](docs/screenshots/eau.png)
+
+| Noël | Halloween | Pâques |
+| --- | --- | --- |
+| ![Neige, chaussette de Noël et animaux en bonnet de Père Noël](docs/screenshots/noel.png) | ![Citrouilles sculptées, chauves-souris et animaux en chapeau de sorcière](docs/screenshots/halloween.png) | ![Œufs de Pâques géants, tulipes et animaux avec des oreilles de lapin](docs/screenshots/paques.png) |
 
 | Menu — Animaux | Menu — Décor | Menu — Eau |
 | --- | --- | --- |
@@ -26,7 +31,13 @@ réglage du volume, et, si on l'autorise, le micro fait sursauter les animaux au
 - **Sols** : roche, sable, nuit, béton, parquet, pelouse ; et sous l'eau étang, lagon, rivière.
 - **Cachettes** (à combiner) : feuilles, pierres, herbe, tulipes, vieille botte (assez grande pour
   qu'un lézard ou une souris y disparaisse) ; nénuphars, rochers, algues.
-- **Réglages** : vitesse, volume des sons (curseur), réaction aux bruits du micro.
+- **Fêtes** (en un geste, sur Terre comme dans l'Eau) : Noël (bonnets, neige, chaussette où se
+  cacher), Halloween (chapeaux de sorcière, citrouilles lumineuses, chauves-souris, braises),
+  Pâques (oreilles de lapin, œufs géants posés sur des œufs en chocolat, pétales).
+- **Réglages** : vitesse, volume des sons (curseur), réaction aux bruits du micro, vibrations quand
+  une patte attrape un animal, et un bouton pour tout remettre par défaut.
+- En bas du menu : la version, le code sur GitHub et un bouton **Signaler un problème** qui ouvre
+  un ticket GitHub pré-rempli.
 
 ## Développement
 
@@ -62,7 +73,8 @@ Sur Coolify : ressource **Docker Compose** pointant sur ce dépôt (`docker-comp
 | `src/game/hopper/` | Grenouille et sauterelle : déplacement par bonds |
 | `src/game/flyer/` | Mouche, coccinelle, oiseau : vol, atterrissage, marche, toilettage |
 | `src/game/fish/` | Poissons : nage ondulante, nageoires, banc de sardines |
-| `src/game/covers/` | Cachettes : feuilles qui se soulèvent, pierres, botte, herbe, tulipes, nénuphars, algues |
+| `src/game/covers/` | Cachettes : feuilles qui se soulèvent, pierres, botte, herbe, tulipes, nénuphars, algues, et celles des fêtes |
+| `src/game/fete.ts` | Fêtes : tenues des animaux, neige, pétales, braises, chauves-souris, lumière |
 | `src/game/ground.ts`, `water.ts` | Textures des sols ; surface, reflets et vaguelettes du thème Eau |
 | `src/game/game.ts` | Population, entrées et sons de toute la scène |
 | `src/game/world.ts` | Scène, caméra, lumière, sol |
