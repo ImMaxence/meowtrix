@@ -303,8 +303,8 @@ export class Voice {
     this.loudUntil = performance.now() + ((t - ctx.currentTime) + 0.4) * 1000;
   }
 
-  /** A fish shooting off: a quick swish of water. */
-  swish(pan: number): void {
+  /** A fish shooting off: a quick swish of water; quieter (`gain`) for a feather lifted by the wind. */
+  swish(pan: number, gain = 0.22): void {
     const ctx = this.ctx;
     const dest = this.dest(pan);
     if (!ctx || !dest || !this.noise) return;
@@ -318,7 +318,7 @@ export class Voice {
     f.frequency.exponentialRampToValueAtTime(2600, t + 0.18);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.22, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.04);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
     src.connect(f).connect(g).connect(dest);
     src.start(t, Math.random() * 1.5, 0.3);

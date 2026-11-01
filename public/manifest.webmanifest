@@ -1,8 +1,10 @@
 {
   "name": "Meowtrix",
   "short_name": "Meowtrix",
-  "description": "Des animaux en 3D à chasser pour votre chat : sur terre ou dans l’eau.",
+  "description": "Des animaux en 3D à chasser pour votre chat : sur terre, dans l’eau ou dans le ciel.",
   "lang": "fr",
+  "id": "/",
+  "categories": ["games", "entertainment", "kids"],
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",

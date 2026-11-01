@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="Meowtrix – des animaux en 3D à chasser pour votre chat, en plein écran : lézards, insectes, souris, oiseaux, poissons…" />
+    <!-- Title, description, links between languages, previews and structured data: filled per page by seo/plugin.ts. -->
+    <!-- seo:head -->
     <meta name="theme-color" content="#0f1412" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,7 +13,6 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <title>Meowtrix</title>
   </head>
   <body>
     <canvas id="scene"></canvas>
@@ -23,18 +23,26 @@
         <header class="panel-head">
           <div class="brand">
             <h1 class="logo">Meow<span>trix</span></h1>
-            <p class="tagline" data-i18n="tagline"></p>
+            <p class="tagline" data-i18n="tagline"><!-- seo:tagline --></p>
           </div>
           <div id="lang" class="lang"></div>
         </header>
 
+        <div id="summary" class="summary" role="status" hidden></div>
         <nav id="themes" class="themes"></nav>
         <nav id="fetes" class="fetes"></nav>
         <nav id="tabs" class="tabs"></nav>
         <div id="tab-panel" class="tab-panel" role="tabpanel"></div>
+        <article id="about" class="tab-panel about" role="tabpanel" hidden>
+          <!-- seo:about -->
+        </article>
 
         <footer class="panel-foot">
           <p id="fatal" class="fatal" data-i18n="noWebgl" hidden></p>
+          <div class="stats-row">
+            <p id="stats" class="stats" aria-live="polite" hidden></p>
+            <button id="share" class="share" type="button" data-i18n="share"></button>
+          </div>
           <button id="play" class="play" type="button"></button>
           <div class="foot-actions">
             <button id="exit-fs" class="ghost" type="button" data-i18n="exitFullscreen" hidden></button>

@@ -195,8 +195,16 @@ button:focus-visible {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+.theme-sky {
+  background: linear-gradient(135deg, rgba(150, 120, 220, 0.16), rgba(240, 170, 90, 0.12));
+}
+
 .theme-water[aria-pressed='true'] {
   --accent: #7fd3ff;
+}
+
+.theme-sky[aria-pressed='true'] {
+  --accent: #d4b8ff;
 }
 
 .theme-icon {
@@ -244,8 +252,28 @@ button:focus-visible {
   background: rgba(240, 160, 210, 0.2);
 }
 
+.fete-auto {
+  flex: none;
+}
+
+.fete-auto[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* On because it is the season (Auto), not chosen. */
+.fete.is-auto {
+  border-style: dashed;
+}
+
 .fete-icon {
   font-size: 1.1rem;
+}
+
+@media (max-width: 440px) {
+  .fete:not(.fete-auto) .fete-label {
+    display: none;
+  }
 }
 
 /* --- Tabs --------------------------------------------------------------- */
@@ -669,7 +697,167 @@ button:focus-visible {
   transform: translateX(22px);
 }
 
+.text-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.text-input:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.text-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* --- About tab ---------------------------------------------------------- */
+
+.about {
+  display: block;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.about h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.about h3 {
+  margin: 18px 0 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.about p,
+.about ul,
+.about ol {
+  margin: 0 0 10px;
+}
+
+.about ul,
+.about ol {
+  padding-left: 1.2em;
+}
+
+.about li {
+  margin-bottom: 4px;
+}
+
+.about a {
+  color: var(--accent);
+}
+
+.about-alt {
+  text-align: right;
+  font-size: 0.8rem;
+}
+
+.faq {
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.faq summary {
+  padding: 10px 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.faq p {
+  margin: 0;
+  padding: 0 12px 12px;
+  color: var(--muted);
+}
+
+.about-links p,
+.about-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* --- End of a session --------------------------------------------------- */
+
+.summary {
+  margin: 0 16px 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  text-align: center;
+}
+
+.summary strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1.05rem;
+}
+
+.summary p {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+}
+
 /* --- Footer ------------------------------------------------------------- */
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.stats {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.share {
+  flex: none;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.share::before {
+  content: '🔗 ';
+}
+
+.share:hover,
+.share:focus-visible {
+  border-color: var(--accent);
+}
 
 .panel-foot {
   flex: none;
@@ -786,11 +974,13 @@ a:focus-visible {
   line-height: 1.4;
 }
 
-@media (max-width: 400px) {
+/* Four tabs on a phone: icon above the label. */
+@media (max-width: 440px) {
   .tab {
-    gap: 4px;
-    padding: 6px 4px;
-    font-size: 0.92rem;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px 2px;
+    font-size: 0.78rem;
   }
 }
 

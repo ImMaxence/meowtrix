@@ -85,6 +85,7 @@ type Weather = 'snow' | 'petals' | 'embers';
 
 const WEATHER: Record<Exclude<Fete, 'none'>, Weather> = { christmas: 'snow', halloween: 'embers', easter: 'petals' };
 const COUNT: Record<Weather, number> = { snow: 700, petals: 260, embers: 120 };
+const POINT_SIZE: Record<Weather, number> = { snow: 0.04, petals: 0.06, embers: 0.035 };
 const PETALS = ['#f6b8c8', '#ffffff', '#f7e08a', '#d5c2f0', '#b8e6c4'].map((c) => new THREE.Color(c));
 const TOP = 2.6;
 
@@ -166,6 +167,8 @@ export class FeteFx {
   private weather: Weather | null = null;
   private points: THREE.Points | null = null;
   private speeds = new Float32Array(0);
+  /** Particle size multiplier (the pixel style draws a smaller picture). */
+  private pointScale = 1;
   private readonly snowGround: THREE.Mesh;
   private readonly bats: Bat[] = [];
   private t = 0;
@@ -204,6 +207,11 @@ export class FeteFx {
     }
   }
 
+  setPointScale(k: number): void {
+    this.pointScale = k;
+    if (this.points && this.weather) (this.points.material as THREE.PointsMaterial).size = POINT_SIZE[this.weather] * k;
+  }
+
   /** `land` is false in the water theme: no snow on the ground there. */
   set(fete: Fete, land: boolean): void {
     this.snowGround.visible = fete === 'christmas' && land;
@@ -237,7 +245,7 @@ export class FeteFx {
       geo,
       new THREE.PointsMaterial({
         map: dotTexture(), vertexColors: true, transparent: true, depthWrite: false,
-        size: weather === 'snow' ? 0.04 : weather === 'petals' ? 0.06 : 0.035,
+        size: POINT_SIZE[weather] * this.pointScale,
         blending: weather === 'embers' ? THREE.AdditiveBlending : THREE.NormalBlending,
       }),
     );

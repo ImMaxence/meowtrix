@@ -1,17 +1,18 @@
-import { COVERS, FETE_ICON, FETES, GROUNDS, SPECIES, THEMES, type SpeciesInfo, type Theme } from './catalog';
+import { COVERS, FETE_ICON, FETES, GROUNDS, SPECIES, THEMES, type Fete, type SpeciesInfo, type Theme } from './catalog';
 import { groundPreview } from './game/ground';
 import { t, type Key, type Lang } from './i18n';
-import { themeTotal, type Settings } from './settings';
+import { CAT_NAME_MAX, SESSION_LENGTHS, STYLES, themeTotal, type Settings } from './settings';
 
-export type Tab = 'animals' | 'scene' | 'game';
+export type Tab = 'animals' | 'scene' | 'game' | 'about';
 
 const TABS: readonly { id: Tab; icon: string; label: Key }[] = [
   { id: 'animals', icon: '🐾', label: 'tab_animals' },
   { id: 'scene', icon: '🍂', label: 'tab_scene' },
   { id: 'game', icon: '⚙️', label: 'tab_game' },
+  { id: 'about', icon: 'ℹ️', label: 'tab_about' },
 ];
 
-const THEME_ICON: Record<Theme, string> = { land: '🌍', water: '🌊' };
+const THEME_ICON: Record<Theme, string> = { land: '🌍', water: '🌊', sky: '🦋' };
 
 const TAB_KEY = 'meowtrix.tab';
 
@@ -26,6 +27,8 @@ export interface MenuHandlers {
   previewVolume: () => void;
   /** Everything back to the defaults (a green lizard on stone). */
   reset: () => void;
+  /** The fête on screen: the chosen one, or the one in season for 'auto'. */
+  activeFete: () => Fete;
 }
 
 interface Elements {
@@ -34,6 +37,8 @@ interface Elements {
   fetes: HTMLElement;
   tabs: HTMLElement;
   panel: HTMLElement;
+  /** The page's own text (what it is, how to play, questions), written in the HTML. */
+  about: HTMLElement;
   lang: HTMLElement;
 }
 
@@ -75,7 +80,10 @@ export class Menu {
     this.renderThemes();
     this.renderFetes();
     this.renderTabs();
-    this.els.panel.replaceChildren(...this.content());
+    const about = this.tab === 'about';
+    this.els.about.hidden = !about;
+    this.els.panel.hidden = about;
+    if (!about) this.els.panel.replaceChildren(...this.content());
     if (focused) this.els.root.querySelector<HTMLElement>(`[data-focus="${focused}"]`)?.focus();
   }
 
@@ -87,7 +95,7 @@ export class Menu {
       // Not remembered; fine.
     }
     this.render();
-    this.els.panel.scrollTop = 0;
+    this.els.panel.scrollTop = this.els.about.scrollTop = 0;
   }
 
   private renderLang(): void {
@@ -123,16 +131,28 @@ export class Menu {
     );
   }
 
-  /** Christmas, Halloween, Easter: tap one to dress everything up, tap it again to go back. */
+  /**
+   * Auto follows the calendar; Christmas, Halloween, Easter: tap one to dress everything up, tap it
+   * again to go back. With Auto, the fête in season is shown on, with a dashed outline.
+   */
   private renderFetes(): void {
     const group = this.els.fetes;
     group.setAttribute('role', 'group');
     group.setAttribute('aria-label', t('fete'));
+    const choice = this.s.fete, active = this.h.activeFete();
+    const auto = button('fete fete-auto', 'fete-auto', () => this.h.change('fete', choice === 'auto' ? 'none' : 'auto'));
+    auto.setAttribute('aria-pressed', String(choice === 'auto'));
+    auto.title = t('fete_autoHelp');
+    auto.append(h('span', 'fete-icon', '📅'), h('span', 'fete-label', t('fete_auto')));
     group.replaceChildren(
+      auto,
       ...FETES.filter((f) => f !== 'none').map((fete) => {
-        const on = this.s.fete === fete;
-        const b = button(`fete fete-${fete}`, `fete-${fete}`, () => this.h.change('fete', on ? 'none' : fete));
+        const on = active === fete;
+        const b = button(`fete fete-${fete}${on && choice === 'auto' ? ' is-auto' : ''}`, `fete-${fete}`, () => this.h.change('fete', on ? 'none' : fete));
         b.setAttribute('aria-pressed', String(on));
+        // The label is hidden on narrow screens.
+        b.setAttribute('aria-label', tk(`fete_${fete}`));
+        b.title = tk(`fete_${fete}`);
         b.append(h('span', 'fete-icon', FETE_ICON[fete]), h('span', 'fete-label', tk(`fete_${fete}`)));
         return b;
       }),
@@ -157,6 +177,7 @@ export class Menu {
       case 'animals': return this.animals();
       case 'scene': return this.scene();
       case 'game': return this.game();
+      case 'about': return [];
     }
   }
 
@@ -251,11 +272,14 @@ export class Menu {
       this.section('ground', grounds),
       coversSection,
       this.section('size', this.chips('size', ['small', 'medium', 'large'] as const, (v) => tk(`size_${v}`))),
+      this.section('style', this.chips('style', STYLES, (v) => tk(`style_${v}`)), 'styleHelp'),
     ];
   }
 
   private game(): HTMLElement[] {
     const items = [
+      this.section('session', this.chips('session', SESSION_LENGTHS, (v) => tk(`session_${v}`)), 'sessionHelp'),
+      this.catName(),
       this.section('speed', this.chips('speed', ['slow', 'normal', 'fast'] as const, (v) => tk(`speed_${v}`))),
       this.volume(),
     ];
@@ -285,14 +309,38 @@ export class Menu {
     return wrap;
   }
 
-  private section(title: Key, body: HTMLElement): HTMLElement {
+  private section(title: Key, body: HTMLElement, help?: Key): HTMLElement {
     const sec = h('section', 'opt');
     const label = h('h2', 'opt-label', t(title));
     sec.append(label, body);
+    if (help) sec.append(h('p', 'opt-help', t(help)));
     return sec;
   }
 
-  private chips<K extends 'size' | 'speed'>(key: K, values: readonly Settings[K][], label: (v: Settings[K]) => string): HTMLElement {
+  /** Saved on each key without rebuilding the menu, which would close the on-screen keyboard. */
+  private catName(): HTMLElement {
+    const sec = h('section', 'opt');
+    const label = h('label', 'opt-label', t('catName'));
+    label.htmlFor = 'cat-name';
+    const input = h('input', 'text-input');
+    input.id = 'cat-name';
+    input.type = 'text';
+    input.maxLength = CAT_NAME_MAX;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.enterKeyHint = 'done';
+    input.placeholder = t('catNamePlaceholder');
+    input.value = this.s.catName;
+    input.dataset.focus = 'cat-name';
+    input.addEventListener('input', () => this.h.change('catName', input.value, false));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+    });
+    sec.append(label, input, h('p', 'opt-help', t('catNameHelp')));
+    return sec;
+  }
+
+  private chips<K extends 'size' | 'speed' | 'style' | 'session'>(key: K, values: readonly Settings[K][], label: (v: Settings[K]) => string): HTMLElement {
     const row = h('div', 'chips');
     row.setAttribute('role', 'group');
     for (const v of values) {

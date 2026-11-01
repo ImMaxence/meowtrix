@@ -22,8 +22,13 @@ export interface Habitat {
   readonly bounds: Bounds;
   readonly walkers: readonly Walker[];
   readonly covers: readonly Cover[];
-  /** Global speed setting (slow / normal / fast). */
+  /** Global speed setting (slow / normal / fast), slower when tired. */
   readonly speedFactor: number;
+  /**
+   * 0 … 1: the end of a timed session is near. Tired animals stop hiding and leaving the screen,
+   * and are easier to catch, so the hunt ends with a catch.
+   */
+  readonly tired: number;
 }
 
 /** How a species behaves. Speeds are in world units per second (the lizard is 1 long). */
@@ -121,7 +126,7 @@ export class Brain {
   touch(x: number, z: number): void {
     if (this.state === 'hidden') return;
     const d = this.body.distanceTo(x, z);
-    if (d < 0.07) {
+    if (d < 0.07 + 0.05 * this.habitat.tired) {
       this.scare(0.5);
       this.voice.alarm();
       this.startle(x, z);
@@ -173,7 +178,7 @@ export class Brain {
     const running = this.state === 'flee' || (this.state === 'hide' && this.moveSpeed > 2);
     if (running && this.t < 0.3) return;
     this.threat.set(x, z);
-    const cover = this.pickCover(2.5, true);
+    const cover = this.habitat.tired < 0.5 ? this.pickCover(2.5, true) : null;
     if (cover && chance(0.9)) this.hideIn(cover, this.species.fleeSpeed + this.fear * 0.8);
     else this.go('flee');
   }
@@ -279,7 +284,7 @@ export class Brain {
     if (this.t < this.dur) return;
     if (this.fear < 0.4 && chance(this.species.callChance)) this.voice.call();
     // Sometimes go and rest in the shade of a leaf or a stone.
-    const shade = chance(this.species.restInCover) ? this.pickCover(3, false) : null;
+    const shade = this.habitat.tired < 0.5 && chance(this.species.restInCover) ? this.pickCover(3, false) : null;
     if (shade) this.hideIn(shade, rand(0.7, 1.2));
     else this.go(this.fear < 0.3 && chance(this.species.displayChance) ? 'display' : 'wander');
   }
@@ -339,7 +344,7 @@ export class Brain {
   private flee(): void {
     this.steer(this.target, this.moveSpeed);
     if (this.target.distanceTo(this.body.pos) > 0.15 && this.t < this.dur) return;
-    if (this.fear > 0.5 && chance(0.55)) {
+    if (this.fear > 0.5 && this.habitat.tired < 0.5 && chance(0.55)) {
       this.go('exit');
     } else {
       this.lookPoint.copy(this.threat);
@@ -373,7 +378,7 @@ export class Brain {
       return;
     }
     this.glanceAndFidget(dt);
-    if (this.t > this.dur) this.go('peek');
+    if (this.t > this.dur || (this.habitat.tired > 0.5 && this.t > 1.5)) this.go('peek');
   }
 
   private peek(): void {
@@ -391,7 +396,7 @@ export class Brain {
 
   private hidden(): void {
     this.body.targetSpeed = 0;
-    if (this.t > this.dur) this.go('enter');
+    if (this.t > this.dur || (this.habitat.tired > 0.5 && this.t > 1)) this.go('enter');
   }
 
   private enter(): void {

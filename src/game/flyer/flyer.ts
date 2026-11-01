@@ -7,6 +7,8 @@ export interface FlyerHabitat {
   readonly bounds: Bounds;
   readonly covers: readonly Cover[];
   readonly speedFactor: number;
+  /** 0 … 1: near the end of a session, flyers land more and stop leaving the screen (see Habitat). */
+  readonly tired: number;
 }
 
 /** The sound of one flyer: a buzz or a flutter while flying, and an optional call. */
@@ -211,7 +213,7 @@ export class Flyer {
 
   private escape(x: number, z: number): void {
     const wasLanded = this.isLanded();
-    if (this.fear > this.style.awayFear) {
+    if (this.fear > this.style.awayFear && this.habitat.tired < 0.5) {
       if (wasLanded) this.sound.call?.(this.pan(), true);
       this.go('away');
       this.boost = 0.8;
@@ -251,7 +253,7 @@ export class Flyer {
     }
     this.steer(dt, this.target, this.speed * (this.boost > 0 ? 1.8 : 1));
     this.pos.y = clamp(this.pos.y, 0.05, s.altitude[1] + 0.2);
-    if (this.t > this.dur && this.boost <= 0) this.pickLanding();
+    if (this.t > this.dur * (1 - 0.6 * this.habitat.tired) && this.boost <= 0) this.pickLanding();
   }
 
   private land(dt: number): void {
@@ -286,7 +288,7 @@ export class Flyer {
     if (p.x < b.minX + 0.15 || p.x > b.maxX - 0.15 || p.z < b.minZ + 0.15 || p.z > b.maxZ - 0.15) {
       this.heading = Math.atan2((b.minX + b.maxX) / 2 - p.x, (b.minZ + b.maxZ) / 2 - p.z);
     }
-    if (this.t > this.dur) {
+    if (this.t > this.dur * (1 + 2 * this.habitat.tired)) {
       if (chance(s.groomChance)) this.go('groom');
       else this.takeOff();
     }
@@ -309,7 +311,7 @@ export class Flyer {
     const b = this.habitat.bounds, p = this.pos;
     if (Math.max(b.minX - p.x, p.x - b.maxX, b.minZ - p.z, p.z - b.maxZ) > 0.6) {
       this.group.visible = false;
-      this.hiddenLeft = rand(3, 8);
+      this.hiddenLeft = rand(3, 8) * (1 - 0.7 * this.habitat.tired);
     }
   }
 

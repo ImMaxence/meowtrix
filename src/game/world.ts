@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Fete } from '../catalog';
 import { FeteFx, MOODS } from './fete';
-import { groundRoughness, makeGroundTexture, WATER_TINT, type GroundTheme, type WaterGround } from './ground';
+import { GROUND_LIGHT, groundRoughness, makeGroundTexture, WATER_TINT, type GroundTheme, type WaterGround } from './ground';
+import { PixelPass } from './pixel';
 import { SURFACE, Water } from './water';
 
 export type ViewSize = 'small' | 'medium' | 'large';
+export type RenderStyle = 'classic' | 'pixel';
 
 /** Visible ground along the screen's short side, in lizard lengths. */
 const VIEW_SHORT: Record<ViewSize, number> = { small: 3.6, medium: 2.6, large: 1.9 };
@@ -14,6 +16,8 @@ const VIEW_SHORT: Record<ViewSize, number> = { small: 3.6, medium: 2.6, large: 1
 const TILT = THREE.MathUtils.degToRad(20);
 const GROUND_SIZE = 80;
 const TILE = 2.5;
+
+const LIGHT_TINT = new THREE.Color();
 
 /** The visible ground rectangle (x, z). */
 export interface Bounds {
@@ -43,6 +47,9 @@ export class World {
   /** Created the first time the water theme is shown. */
   private water: Water | null = null;
   private ground: GroundTheme = 'stone';
+  /** Created the first time the pixel style is chosen. */
+  private pixel: PixelPass | null = null;
+  private style: RenderStyle = 'classic';
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -92,6 +99,14 @@ export class World {
     this.groundMat.needsUpdate = true;
     this.ground = theme;
     this.tintWater();
+    this.applyLight();
+  }
+
+  /** Smooth 3D, or big pixels with fewer colours. */
+  setStyle(style: RenderStyle): void {
+    this.style = style;
+    if (style === 'pixel' && !this.pixel) this.pixel = new PixelPass(this.renderer);
+    this.resize();
   }
 
   /** Shows or hides the water (surface, caustics, ripples) of the water theme. */
@@ -108,18 +123,37 @@ export class World {
   /** Light, weather and snow of a fête ('none' for the everyday look). */
   setFete(fete: Fete): void {
     this.fete = fete;
-    const m = MOODS[fete];
-    this.sky.color.set(m.sky);
-    this.sky.groundColor.set(m.ground);
-    this.sky.intensity = m.hemi;
-    this.sun.color.set(m.sun);
-    this.sun.intensity = m.sunPower;
-    this.renderer.toneMappingExposure = m.exposure;
+    this.applyLight();
     if (fete !== 'none' && !this.fx) {
       this.fx = new FeteFx(GROUND_SIZE, TILE);
       this.scene.add(this.fx.group);
+      this.scalePoints();
     }
     this.fx?.set(fete, !this.underwater);
+  }
+
+  /** The fête's mood, dimmed and tinted at dusk or by moonlight. */
+  private applyLight(): void {
+    const m = MOODS[this.fete], g = GROUND_LIGHT[this.ground];
+    const power = g?.power ?? 1;
+    this.sky.color.set(m.sky);
+    this.sky.groundColor.set(m.ground);
+    this.sun.color.set(m.sun);
+    if (g) {
+      LIGHT_TINT.set(g.tint);
+      this.sky.color.multiply(LIGHT_TINT);
+      this.sun.color.multiply(LIGHT_TINT);
+    }
+    this.sky.intensity = m.hemi * (0.3 + 0.7 * power);
+    this.sun.intensity = m.sunPower * power;
+    this.scene.environmentIntensity = 0.35 * (0.25 + 0.75 * power);
+    this.renderer.toneMappingExposure = m.exposure;
+  }
+
+  /** Snow and petals are sized in screen pixels: make them as big in the small pixel-art picture. */
+  private scalePoints(): void {
+    const pixel = this.style === 'pixel' && this.pixel;
+    this.fx?.setPointScale(pixel ? pixel.height / (window.innerHeight * this.renderer.getPixelRatio()) : 1);
   }
 
   private tintWater(): void {
@@ -165,6 +199,8 @@ export class World {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.updateCamera();
+    if (this.style === 'pixel') this.pixel?.setSize(w, h);
+    this.scalePoints();
   }
 
   /** Projects a screen point onto the ground, or onto a horizontal plane at `height`. */
@@ -185,7 +221,8 @@ export class World {
   }
 
   render(): void {
-    this.renderer.render(this.scene, this.camera);
+    if (this.style === 'pixel' && this.pixel) this.pixel.render(this.renderer, this.scene, this.camera);
+    else this.renderer.render(this.scene, this.camera);
   }
 
   private updateCamera(): void {

@@ -4,10 +4,18 @@ import { fbm2p, hash3, noise2pp } from './noise';
 
 export type LandGround = 'stone' | 'sand' | 'night' | 'concrete' | 'wood' | 'lawn';
 export type WaterGround = 'pond' | 'lagoon' | 'river';
-export type GroundTheme = LandGround | WaterGround;
+export type SkyGround = 'meadow' | 'dusk' | 'moonlit';
+export type GroundTheme = LandGround | WaterGround | SkyGround;
 
 export const LAND_GROUNDS: readonly LandGround[] = ['stone', 'sand', 'night', 'concrete', 'wood', 'lawn'];
 export const WATER_GROUNDS: readonly WaterGround[] = ['pond', 'lagoon', 'river'];
+export const SKY_GROUNDS: readonly SkyGround[] = ['meadow', 'dusk', 'moonlit'];
+
+/** How the sky grounds light the scene: a low warm sun at dusk, moonlight at night (strength 1 = daylight). */
+export const GROUND_LIGHT: Partial<Record<GroundTheme, { tint: string; power: number }>> = {
+  dusk: { tint: '#ffb070', power: 0.55 },
+  moonlit: { tint: '#7d94e0', power: 0.16 },
+};
 
 /** Colour of the water over each water ground. */
 export const WATER_TINT: Record<WaterGround, string> = { pond: '#3d6440', lagoon: '#25a9bd', river: '#4a7d8c' };
@@ -152,9 +160,27 @@ function paintWood(ctx: CanvasRenderingContext2D, size: number): void {
   });
 }
 
-/** A mown lawn: mottled green with thousands of short blades on top. */
-function paintLawn(ctx: CanvasRenderingContext2D, size: number): void {
-  const dark = rgb('#2f5320'), light = rgb('#5d8a35'), soil = rgb('#4a3b26');
+interface Grass {
+  dark: string;
+  light: string;
+  soil: string;
+  /** Blade colour, per channel, as a share of its brightness. */
+  blade: RGB;
+  /** Wild flowers scattered over it. */
+  flowers: readonly string[];
+  flowerCount: number;
+}
+
+const GRASSES: Record<'lawn' | SkyGround, Grass> = {
+  lawn: { dark: '#2f5320', light: '#5d8a35', soil: '#4a3b26', blade: [0.55, 1, 0.35], flowers: [], flowerCount: 0 },
+  meadow: { dark: '#3a6224', light: '#6f9a3c', soil: '#55452a', blade: [0.6, 1, 0.35], flowers: ['#ffffff', '#f6d23a', '#f4f0e6', '#c9a6ee'], flowerCount: 140 },
+  dusk: { dark: '#5a5a26', light: '#9a8a44', soil: '#5e4a2a', blade: [0.95, 0.9, 0.42], flowers: ['#f2e2b0', '#e8b040', '#d07a48'], flowerCount: 60 },
+  moonlit: { dark: '#16261c', light: '#2a4232', soil: '#1e2420', blade: [0.42, 0.75, 0.62], flowers: ['#dfe6ff', '#c8d4f0'], flowerCount: 50 },
+};
+
+/** Grass: mottled green with thousands of short blades on top, and wild flowers on the sky grounds. */
+function paintGrass(ctx: CanvasRenderingContext2D, size: number, g: Grass): void {
+  const dark = rgb(g.dark), light = rgb(g.light), soil = rgb(g.soil);
   fillPixels(ctx, size, (u, v, x, y) => {
     const n = fbm2p(u, v, 6, 5, 71);
     const bare = smoothstep(0.66, 0.78, fbm2p(u, v, 3, 3, 72));
@@ -166,14 +192,35 @@ function paintLawn(ctx: CanvasRenderingContext2D, size: number): void {
   for (let k = 0; k < blades; k++) {
     const x = hash3(k, 1, 0, 74) * size, y = hash3(k, 2, 0, 74) * size;
     const a = hash3(k, 3, 0, 74) * TAU, len = (3 + hash3(k, 4, 0, 74) * 7) * scale;
-    const g = 70 + hash3(k, 5, 0, 74) * 90;
-    ctx.strokeStyle = `rgba(${Math.round(g * 0.55)},${Math.round(g)},${Math.round(g * 0.35)},0.75)`;
+    const level = 70 + hash3(k, 5, 0, 74) * 90;
+    ctx.strokeStyle = `rgba(${g.blade.map((c) => Math.round(level * c)).join(',')},0.75)`;
     ctx.lineWidth = Math.max(0.6, 1.3 * scale);
     wrapped(ctx, size, x, y, () => {
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
       ctx.stroke();
+    });
+  }
+  // Five round petals around a yellow heart.
+  const flowers = Math.round(g.flowerCount * scale * scale);
+  for (let k = 0; k < flowers; k++) {
+    const x = hash3(k, 1, 0, 77) * size, y = hash3(k, 2, 0, 77) * size;
+    const r = (2.4 + hash3(k, 3, 0, 77) * 2.4) * scale;
+    const petal = g.flowers[k % g.flowers.length];
+    wrapped(ctx, size, x, y, () => {
+      ctx.rotate(hash3(k, 4, 0, 77) * TAU);
+      ctx.fillStyle = petal;
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU;
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(a) * r * 0.75, Math.sin(a) * r * 0.75, r * 0.6, r * 0.4, a, 0, TAU);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#e8b520';
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.38, 0, TAU);
+      ctx.fill();
     });
   }
 }
@@ -225,7 +272,7 @@ function paint(theme: GroundTheme, size: number): HTMLCanvasElement {
     if (theme === 'lagoon') shells(ctx, size);
   } else if (theme === 'concrete') paintConcrete(ctx, size);
   else if (theme === 'wood') paintWood(ctx, size);
-  else paintLawn(ctx, size);
+  else paintGrass(ctx, size, GRASSES[theme as keyof typeof GRASSES]);
   return canvas;
 }
 

@@ -4,11 +4,14 @@ import { Voice } from './audio/voice';
 import {
   enterFullscreen, exitFullscreen, isFullscreen, isIOS, isStandalone, registerServiceWorker, ScreenWakeLock,
 } from './device';
+import { resolveFete, type Fete } from './catalog';
 import { Game } from './game/game';
 import { PointerInput } from './game/input';
 import { World } from './game/world';
-import { setLang, t } from './i18n';
+import { currentLang, plural, setLang, t, tf } from './i18n';
 import { Menu } from './menu';
+import { applyPreset, presetQuery } from './preset';
+import { Session } from './session';
 import { loadSettings, resetSettings, saveSettings, SPEED_FACTOR, type Settings } from './settings';
 
 const HOLD_MS = 1400;
@@ -23,8 +26,17 @@ const holdBtn = $<HTMLButtonElement>('#hold');
 const toastEl = $('#toast');
 const installBtn = $<HTMLButtonElement>('#install');
 const installHint = $('#install-hint');
+const statsEl = $('#stats');
+const shareBtn = $<HTMLButtonElement>('#share');
+const summaryEl = $('#summary');
 
 const settings = loadSettings();
+// A landing page (/eau/, /noel/…) or a shared link sets up its scene; the link is then cleaned
+// up so that a reload keeps what was changed in the menu since.
+const fromPage = applyPreset(settings, document.documentElement.dataset.preset ?? '');
+const fromLink = applyPreset(settings, location.search);
+if (fromPage || fromLink) saveSettings(settings);
+if (fromLink) history.replaceState(null, '', location.pathname + location.hash);
 setLang(settings.lang);
 registerServiceWorker();
 $('#version').textContent = `Meowtrix v${__APP_VERSION__}`;
@@ -57,20 +69,36 @@ if (world) start(world);
 
 function start(world: World): void {
   world.setViewSize(settings.size);
+  world.setStyle(settings.style);
 
   const voice = new Voice();
   const game = new Game(world, voice);
-  game.speedFactor = SPEED_FACTOR[settings.speed];
+  game.speed = SPEED_FACTOR[settings.speed];
   const applyTheme = () => {
     world.setGround(settings.ground[settings.theme]);
     game.setTheme(settings.theme, settings.covers[settings.theme], settings.animals, settings.colors);
   };
   applyTheme();
-  game.setFete(settings.fete);
+  let fete: Fete = resolveFete(settings.fete);
+  game.setFete(fete);
+  /** Also called when the menu opens or play starts: with 'auto', the season may have turned. */
+  const applyFete = () => {
+    const next = resolveFete(settings.fete);
+    if (next === fete) return;
+    fete = next;
+    game.setFete(fete);
+  };
+
+  const session = new Session();
+  /** The last timed session is over: the next Play starts a new one. */
+  let sessionOver = false;
+  let summary: { catches: number; minutes: number } | null = null;
   const vibrationSupported = typeof navigator.vibrate === 'function';
-  // A short buzz when a paw lands right on an animal.
   game.onCatch = () => {
-    if (playing && settings.vibration && vibrationSupported) navigator.vibrate(40);
+    if (!playing) return;
+    session.caught();
+    // A short buzz when a paw lands right on an animal.
+    if (settings.vibration && vibrationSupported) navigator.vibrate(40);
   };
 
   const input = new PointerInput(canvas, world, game);
@@ -83,57 +111,136 @@ function start(world: World): void {
   // --- Menu -------------------------------------------------------------------
 
   const options = new Menu(
-    { root: menu, themes: $('#themes'), fetes: $('#fetes'), tabs: $('#tabs'), panel: $('#tab-panel'), lang: $('#lang') },
+    {
+      root: menu, themes: $('#themes'), fetes: $('#fetes'), tabs: $('#tabs'), panel: $('#tab-panel'),
+      about: $('#about'), lang: $('#lang'),
+    },
     settings,
-    { change, micSupported, vibrationSupported, previewVolume: () => voice.preview(), reset },
+    { change, micSupported, vibrationSupported, previewVolume: () => voice.preview(), reset, activeFete: () => fete },
   );
+
+  const catName = () => settings.catName.trim();
+  const catches = (n: number) => plural(n, 'catch_one', 'catch_many');
+
+  /** This session's and all-time catches, and the time left in a timed session. */
+  function renderStats(): void {
+    const parts: string[] = [];
+    if (session.catches || session.stats.total) {
+      parts.push(tf('thisSession', { catches: catches(session.catches) }), tf('inTotal', { n: session.stats.total }));
+    }
+    if (played && !sessionOver && session.timed) parts.push(plural(session.minutesLeft, 'minLeft_one', 'minLeft_many'));
+    statsEl.hidden = !parts.length;
+    statsEl.textContent = `🐾 ${catName() ? `${catName()} · ` : ''}${parts.join(' · ')}`;
+  }
+
+  function renderSummary(): void {
+    summaryEl.hidden = !summary;
+    if (!summary) return;
+    const cat = catName() || t('myCat');
+    const line = (text: string) => {
+      const p = document.createElement('p');
+      p.textContent = text;
+      return p;
+    };
+    const title = document.createElement('strong');
+    title.textContent = t('summaryTitle');
+    summaryEl.replaceChildren(
+      title,
+      line(summary.catches ? tf('summaryCaught', { cat, catches: catches(summary.catches), minutes: summary.minutes }) : t('summaryNone')),
+      ...(summary.catches ? [line(t('summaryTreat'))] : []),
+    );
+  }
 
   const refreshMenu = () => {
     options.render();
-    playBtn.textContent = t(played ? 'resume' : 'play');
+    renderStats();
+    renderSummary();
+    playBtn.textContent = t(played && !sessionOver ? 'resume' : 'play');
     exitFsBtn.hidden = !isFullscreen();
   };
 
-  /** `rerender` is false while a slider is dragged: rebuilding the menu would drop the slider. */
+  /** `rerender` is false while a slider is dragged or a name typed: rebuilding the menu would drop them. */
   function change<K extends keyof Settings>(key: K, value: Settings[K], rerender = true): void {
     settings[key] = value;
     saveSettings(settings);
     if (key === 'volume') voice.setVolume(settings.volume);
+    if (key === 'catName') {
+      renderStats();
+      renderSummary();
+    }
     if (!rerender) return;
     if (key === 'lang') setLang(settings.lang);
     if (key === 'theme') applyTheme();
     if (key === 'animals' || key === 'colors') game.setPopulation(settings.animals, settings.colors);
-    if (key === 'speed') game.speedFactor = SPEED_FACTOR[settings.speed];
+    if (key === 'speed') game.speed = SPEED_FACTOR[settings.speed];
     if (key === 'covers') game.setCovers(settings.covers[settings.theme]);
     if (key === 'size') {
       world.setViewSize(settings.size);
       game.relayout(true);
     }
     if (key === 'ground') world.setGround(settings.ground[settings.theme]);
-    if (key === 'fete') game.setFete(settings.fete);
+    if (key === 'style') world.setStyle(settings.style);
+    if (key === 'fete') applyFete();
+    if (key === 'session') session.setLength(settings.session);
     refreshMenu();
   }
 
-  /** Back to a single green lizard on stone, in the land theme, with no fête. */
+  /** Back to a single green lizard on stone, in the land theme, with the fête in season. */
   function reset(): void {
     resetSettings(settings);
     saveSettings(settings);
     world.setViewSize(settings.size);
-    game.speedFactor = SPEED_FACTOR[settings.speed];
+    world.setStyle(settings.style);
+    game.speed = SPEED_FACTOR[settings.speed];
     applyTheme();
-    game.setFete(settings.fete);
+    applyFete();
     refreshMenu();
   }
+
+  /** The text and the link (to this scene) for the share sheet, or the clipboard. */
+  async function share(): Promise<void> {
+    const cat = catName() || t('myCat');
+    const text = session.catches
+      ? tf('shareSession', { cat, catches: catches(session.catches) })
+      : session.stats.total
+        ? tf('shareTotal', { cat, catches: catches(session.stats.total) })
+        : t('shareIntro');
+    const url = `${location.origin}${currentLang() === 'en' ? '/en/' : '/'}?${presetQuery(settings)}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Meowtrix', text, url });
+        return;
+      } catch (e) {
+        if ((e as DOMException).name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      toast(t('linkCopied'));
+    } catch {
+      toast(tf('copyThis', { url }), 10000);
+    }
+  }
+  shareBtn.addEventListener('click', () => void share());
 
   function openMenu(): void {
     if (!playing) return;
     playing = false;
     input.enabled = false;
     voice.setMuted(true);
+    applyFete();
     menu.classList.remove('hidden');
     holdBtn.hidden = true;
     refreshMenu();
     playBtn.focus();
+  }
+
+  /** Time is up and the cat made its last catch (or gave up): show how it went. */
+  function endSession(): void {
+    summary = { catches: session.catches, minutes: Math.max(1, Math.round(session.elapsed / 60)) };
+    sessionOver = true;
+    game.tired = 0;
+    openMenu();
   }
 
   async function play(): Promise<void> {
@@ -144,6 +251,12 @@ function start(world: World): void {
     voice.setMuted(false);
     wakeLock.request();
 
+    if (!played || sessionOver) {
+      session.start(settings.session);
+      sessionOver = false;
+      summary = null;
+    }
+    applyFete();
     menu.classList.add('hidden');
     holdBtn.hidden = false;
     playing = true;
@@ -236,6 +349,10 @@ function start(world: World): void {
     const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60;
     last = now;
 
+    if (playing) {
+      if (session.update(dt)) endSession();
+      else game.tired = session.tired;
+    }
     game.update(dt);
     world.update(dt);
     if (playing && mic) {
@@ -256,7 +373,7 @@ function start(world: World): void {
     }
   };
 
-  if (import.meta.env.DEV) Object.assign(window, { meowtrix: { world, game } });
+  if (import.meta.env.DEV) Object.assign(window, { meowtrix: { world, game, session } });
 
   world.renderer.setAnimationLoop(frame);
 

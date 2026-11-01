@@ -22,6 +22,11 @@ import { LIZARD_SKINS, LONGTAIL_SKINS } from './lizard/skin';
 import { COATS, MOUSE_BUILD, SQUIRREL_BUILD, type Coat, type MammalBuild } from './mammal/builds';
 import { Mammal } from './mammal/mammal';
 import { rand, TAU } from './math';
+import { BUTTERFLY_COLORS, BUTTERFLY_STYLE, ButterflyBody } from './sky/butterfly';
+import { Feather, FEATHER_COLORS } from './sky/feather';
+import { FIREFLY_COLORS, FIREFLY_STYLE, FireflyBody } from './sky/firefly';
+import { LASER_COLORS, LaserDot } from './sky/laser';
+import type { Toy } from './sky/toy';
 import * as SP from './species';
 import { variantAt, type Variant } from './variant';
 import { SURFACE } from './water';
@@ -30,7 +35,10 @@ import type { Bounds, World } from './world';
 /** Fish are touched where they swim, not on the bottom. */
 const SWIM_HEIGHT = 0.28;
 
-type Actor = { brain: Brain } | { flyer: Flyer };
+/** A paw lands with several pads at once: touches this close together count as one catch. */
+const CATCH_GAP = 0.4;
+
+type Actor = { brain: Brain } | { flyer: Flyer } | { toy: Toy };
 
 /** How to make one animal of a species, wearing a given colour. */
 type Spawner = (color: string, offset: number) => Actor;
@@ -39,9 +47,14 @@ const tmp = new THREE.Vector3();
 
 /** All the animals and hiding spots of the current theme, wired to the world, the input and the sound. */
 export class Game implements Habitat {
-  speedFactor = 1;
-  /** A paw landed right on an animal (for a little vibration). */
+  /** Speed setting (slow / normal / fast). */
+  speed = 1;
+  /** 0 … 1, raised near the end of a timed session (see Habitat.tired). */
+  tired = 0;
+  /** A paw landed right on an animal: counted, and a little vibration. */
   onCatch: (() => void) | null = null;
+  private time = 0;
+  private lastCatch = -Infinity;
   private theme: Theme = 'land';
   private fete: Fete = 'none';
   /** Hiding spots chosen in the menu; a fête adds its own on land. */
@@ -50,6 +63,7 @@ export class Game implements Habitat {
   private readonly colors = new Map<AnimalKey, string>();
   private brains: Brain[] = [];
   private flyers: Flyer[] = [];
+  private toys: Toy[] = [];
   private walkerList: Walker[] = [];
   private readonly coverField: Covers;
   private readonly spawners: Record<AnimalKey, Spawner>;
@@ -61,6 +75,11 @@ export class Game implements Habitat {
 
   get bounds(): Bounds {
     return this.world.bounds;
+  }
+
+  /** Tired animals slow down to half speed. */
+  get speedFactor(): number {
+    return this.speed * (1 - 0.5 * this.tired);
   }
 
   get walkers(): readonly Walker[] {
@@ -110,12 +129,13 @@ export class Game implements Habitat {
     const all = [...this.actors.values()].flat();
     this.brains = all.flatMap((a) => ('brain' in a ? [a.brain] : []));
     this.flyers = all.flatMap((a) => ('flyer' in a ? [a.flyer] : []));
+    this.toys = all.flatMap((a) => ('toy' in a ? [a.toy] : []));
     this.walkerList = this.brains.map((b) => b.body);
   }
 
   setCovers(kinds: readonly CoverKind[]): void {
     this.chosenCovers = kinds;
-    const extra = this.theme === 'land' && this.fete !== 'none' ? [FETE_COVER[this.fete]] : [];
+    const extra = this.theme !== 'water' && this.fete !== 'none' ? [FETE_COVER[this.fete]] : [];
     this.coverField.setKinds([...kinds, ...extra], this.bounds);
   }
 
@@ -141,8 +161,11 @@ export class Game implements Habitat {
     // Flyers may be in the air: test the touch at their altitude.
     for (const f of this.flyers) {
       if (!this.world.pick(sx, sy, tmp, f.pos.y + 0.05)) continue;
-      if (f.group.visible && Math.hypot(f.pos.x - tmp.x, f.pos.z - tmp.z) < 0.1) this.onCatch?.();
+      if (f.group.visible && Math.hypot(f.pos.x - tmp.x, f.pos.z - tmp.z) < 0.1 + 0.05 * this.tired) this.caught();
       f.touch(tmp.x, tmp.z);
+    }
+    for (const t of this.toys) {
+      if (this.world.pick(sx, sy, tmp, t.pos.y) && t.touch(tmp.x, tmp.z)) this.caught();
     }
   }
 
@@ -153,17 +176,21 @@ export class Game implements Habitat {
     }
     for (const b of this.brains) b.pointer(x, z, speed);
     for (const f of this.flyers) if (this.world.pick(sx, sy, tmp, f.pos.y + 0.05)) f.pointer(tmp.x, tmp.z, speed);
+    for (const t of this.toys) if (this.world.pick(sx, sy, tmp, t.pos.y)) t.pointer(tmp.x, tmp.z, speed);
   }
 
   noise(level: 1 | 2): void {
     for (const b of this.brains) b.noise(level);
     for (const f of this.flyers) f.noise(level);
+    for (const t of this.toys) t.noise(level);
   }
 
   update(dt: number): void {
+    this.time += dt;
     for (const b of this.brains) b.update(dt);
     for (const w of this.walkerList) w.update(dt);
     for (const f of this.flyers) f.update(dt);
+    for (const t of this.toys) t.update(dt);
     this.coverField.update(dt, this.walkerList);
   }
 
@@ -172,8 +199,14 @@ export class Game implements Habitat {
     while (list?.length) this.remove(list.pop()!);
   }
 
+  private caught(): void {
+    if (this.time - this.lastCatch < CATCH_GAP) return;
+    this.lastCatch = this.time;
+    this.onCatch?.();
+  }
+
   private heads(a: Actor): readonly THREE.Object3D[] {
-    return 'brain' in a ? a.brain.body.heads : a.flyer.heads;
+    return 'brain' in a ? a.brain.body.heads : 'flyer' in a ? a.flyer.heads : a.toy.heads;
   }
 
   private remove(a: Actor): void {
@@ -182,7 +215,8 @@ export class Game implements Habitat {
     if ('brain' in a) {
       a.brain.dispose();
       a.brain.body.dispose();
-    } else a.flyer.dispose();
+    } else if ('flyer' in a) a.flyer.dispose();
+    else a.toy.dispose();
   }
 
   private makeSpawners(): Record<AnimalKey, Spawner> {
@@ -207,7 +241,7 @@ export class Game implements Habitat {
           call: () => cry?.(pan(b), false),
           alarm: () => {
             cry?.(pan(b), true);
-            this.onCatch?.();
+            this.caught();
           },
         }),
       };
@@ -220,6 +254,13 @@ export class Game implements Habitat {
         this.world.scene.add(f.group);
         return { flyer: f };
       };
+    /** Butterflies and fireflies make no sound. */
+    const silent = (): FlyerSound => ({ update: () => {}, dispose: () => {} });
+    const toy = <V extends Variant>(list: readonly V[], make: (variant: V) => Toy): Spawner => (color, offset) => {
+      const t = make(variantAt(list, color, offset));
+      this.world.scene.add(t.group);
+      return { toy: t };
+    };
     /** Fish blow bubbles you can see and hear; big ones splash when they break the surface. */
     const fish = (key: keyof typeof FISH_BUILDS, species: Species): Spawner => (color, offset) => {
       const build = FISH_BUILDS[key];
@@ -245,7 +286,7 @@ export class Game implements Habitat {
           call: blow,
           alarm: () => {
             v.splash(this.world.panOf(body.bodyX));
-            this.onCatch?.();
+            this.caught();
           },
         }),
       };
@@ -271,6 +312,10 @@ export class Game implements Habitat {
       trouts: fish('trouts', SP.TROUT),
       salmons: fish('salmons', SP.SALMON),
       sharks: fish('sharks', SP.SHARK),
+      butterflies: flyer(BUTTERFLY_COLORS, BUTTERFLY_STYLE, (c) => new ButterflyBody(c), silent),
+      fireflies: flyer(FIREFLY_COLORS, FIREFLY_STYLE, (c) => new FireflyBody(c), silent),
+      feathers: toy(FEATHER_COLORS, (c) => new Feather(this, c, (x, size) => v.swish(this.world.panOf(x), 0.05 + 0.05 * size))),
+      laser: toy(LASER_COLORS, (c) => new LaserDot(this, c)),
     };
   }
 
