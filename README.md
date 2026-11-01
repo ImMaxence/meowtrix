@@ -5,6 +5,16 @@ qui se promènent, se cachent sous les feuilles et les pierres, et détalent qua
 touche. Les sons sont synthétisés en direct (Web Audio API) et, si on l'autorise, le micro fait
 sursauter les animaux aux bruits de la pièce.
 
+**👉 Jouer : [meowtrix.mbonnici.fr](https://meowtrix.mbonnici.fr/)**
+
+![Lézards, souris et mouche entre les feuilles et les pierres](docs/screenshots/scene.png)
+
+| Menu — Animaux | Menu — Décor |
+| --- | --- |
+| ![Onglet Animaux : nombre et robe de chaque espèce](docs/screenshots/menu-animaux.png) | ![Onglet Décor : sol, cachettes et taille des animaux](docs/screenshots/menu-decor.png) |
+
+![Un anolis vert sort de sa cachette sous une pierre](docs/screenshots/lezard.png)
+
 ## Développement
 
 ```bash
