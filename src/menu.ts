@@ -1,6 +1,7 @@
-import { SKIN_IDS, SKINS, swatchCss } from './game/lizard/skin';
+import { COVERS, GROUNDS, SPECIES, THEMES, type SpeciesInfo, type Theme } from './catalog';
+import { groundPreview } from './game/ground';
 import { t, type Key, type Lang } from './i18n';
-import { MAX_COUNT, type AnimalKey, type Settings } from './settings';
+import { themeTotal, type Settings } from './settings';
 
 export type Tab = 'animals' | 'scene' | 'game';
 
@@ -10,28 +11,23 @@ const TABS: readonly { id: Tab; icon: string; label: Key }[] = [
   { id: 'game', icon: '⚙️', label: 'tab_game' },
 ];
 
-const SPECIES: readonly { key: AnimalKey; icon: string; desc: Key }[] = [
-  { key: 'lizards', icon: '🦎', desc: 'lizards_desc' },
-  { key: 'mice', icon: '🐭', desc: 'mice_desc' },
-  { key: 'flies', icon: '🪰', desc: 'flies_desc' },
-];
-
-/** Previews of the ground themes, for the scenery cards. */
-const GROUND_PREVIEW = {
-  stone: 'radial-gradient(circle at 30% 35%, #6d675f 0 3px, transparent 4px), radial-gradient(circle at 70% 65%, #615b54 0 4px, transparent 5px), linear-gradient(135deg, #4a4642, #3b3835)',
-  sand: 'repeating-linear-gradient(170deg, #d3bb8f 0 6px, #c4a878 6px 10px)',
-  night: 'radial-gradient(circle at 60% 40%, #232a33 0 4px, transparent 5px), linear-gradient(135deg, #1a1f26, #0e1115)',
-} as const;
+const THEME_ICON: Record<Theme, string> = { land: '🌍', water: '🌊' };
 
 const TAB_KEY = 'meowtrix.tab';
 
+/** For keys built from data (species, variants, grounds): they all exist in the dictionaries. */
+const tk = (key: string): string => t(key as Key);
+
 export interface MenuHandlers {
-  change: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  change: <K extends keyof Settings>(key: K, value: Settings[K], rerender?: boolean) => void;
   micSupported: boolean;
+  /** Plays a short sound at the chosen volume. */
+  previewVolume: () => void;
 }
 
 interface Elements {
   root: HTMLElement;
+  themes: HTMLElement;
   tabs: HTMLElement;
   panel: HTMLElement;
   lang: HTMLElement;
@@ -52,7 +48,7 @@ function button(className: string, focus: string, onClick: () => void, text = ''
   return b;
 }
 
-/** The options panel: language toggle, tabs and the active tab's controls. */
+/** The options panel: language toggle, land/water switch, tabs and the active tab's controls. */
 export class Menu {
   private tab: Tab = 'animals';
 
@@ -69,6 +65,7 @@ export class Menu {
     // Rebuilding the DOM would lose keyboard focus (TV remotes): restore it afterwards.
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.focus;
     this.renderLang();
+    this.renderThemes();
     this.renderTabs();
     this.els.panel.replaceChildren(...this.content());
     if (focused) this.els.root.querySelector<HTMLElement>(`[data-focus="${focused}"]`)?.focus();
@@ -100,6 +97,24 @@ export class Menu {
     );
   }
 
+  private renderThemes(): void {
+    const group = this.els.themes;
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', t('theme'));
+    group.replaceChildren(
+      ...THEMES.map((theme) => {
+        const b = button(`theme theme-${theme}`, `theme-${theme}`, () => {
+          if (this.s.theme === theme) return;
+          this.h.change('theme', theme);
+          this.els.panel.scrollTop = 0;
+        });
+        b.setAttribute('aria-pressed', String(this.s.theme === theme));
+        b.append(h('span', 'theme-icon', THEME_ICON[theme]), h('span', 'theme-label', tk(`theme_${theme}`)));
+        return b;
+      }),
+    );
+  }
+
   private renderTabs(): void {
     this.els.tabs.setAttribute('role', 'tablist');
     this.els.tabs.replaceChildren(
@@ -122,47 +137,57 @@ export class Menu {
   }
 
   private animals(): HTMLElement[] {
-    const s = this.s;
-    const total = s.lizards + s.mice + s.flies;
-    return SPECIES.map(({ key, icon, desc }) => {
-      const n = s[key];
-      const card = h('div', `species${n ? '' : ' is-off'}`);
-      const row = h('div', 'species-row');
-      const info = h('div', 'species-info');
-      info.append(h('div', 'species-name', t(key)), h('div', 'species-desc', t(desc)));
-
-      const stepper = h('div', 'stepper');
-      stepper.setAttribute('role', 'group');
-      stepper.setAttribute('aria-label', t(key));
-      const minus = button('step', `${key}-minus`, () => this.h.change(key, n - 1), '−');
-      minus.setAttribute('aria-label', `${t('less')} – ${t(key)}`);
-      // Keep at least one animal on screen.
-      minus.disabled = n === 0 || total === 1;
-      const plus = button('step', `${key}-plus`, () => this.h.change(key, n + 1), '+');
-      plus.setAttribute('aria-label', `${t('more')} – ${t(key)}`);
-      plus.disabled = n >= MAX_COUNT[key];
-      const value = h('output', 'step-value', String(n));
-      value.setAttribute('aria-live', 'polite');
-      stepper.append(minus, value, plus);
-
-      row.append(h('div', 'species-icon', icon), info, stepper);
-      card.append(row);
-      if (key === 'lizards' && n > 0) card.append(this.skins());
-      return card;
+    const list = SPECIES[this.s.theme];
+    const grouped = new Set(list.map((sp) => sp.group)).size > 1;
+    const items: HTMLElement[] = [];
+    list.forEach((sp, i) => {
+      if (grouped && sp.group !== list[i - 1]?.group) items.push(h('h2', 'group-label', tk(`group_${sp.group}`)));
+      items.push(this.species(sp));
     });
+    return items;
   }
 
-  private skins(): HTMLElement {
+  private species(sp: SpeciesInfo): HTMLElement {
+    const s = this.s, key = sp.key;
+    const n = s.animals[key];
+    const setCount = (value: number) => this.h.change('animals', { ...s.animals, [key]: value });
+    const card = h('div', `species${n ? '' : ' is-off'}`);
+    const row = h('div', 'species-row');
+    const info = h('div', 'species-info');
+    info.append(h('div', 'species-name', tk(key)), h('div', 'species-desc', tk(`${key}_desc`)));
+
+    const stepper = h('div', 'stepper');
+    stepper.setAttribute('role', 'group');
+    stepper.setAttribute('aria-label', tk(key));
+    const minus = button('step', `${key}-minus`, () => setCount(n - 1), '−');
+    minus.setAttribute('aria-label', `${t('less')} – ${tk(key)}`);
+    // Keep at least one animal on screen.
+    minus.disabled = n === 0 || themeTotal(s, s.theme) === 1;
+    const plus = button('step', `${key}-plus`, () => setCount(n + 1), '+');
+    plus.setAttribute('aria-label', `${t('more')} – ${tk(key)}`);
+    plus.disabled = n >= sp.max;
+    const value = h('output', 'step-value', String(n));
+    value.setAttribute('aria-live', 'polite');
+    stepper.append(minus, value, plus);
+
+    row.append(h('div', 'species-icon', sp.icon), info, stepper);
+    card.append(row);
+    if (n > 0 && sp.variants.length > 1) card.append(this.colors(sp));
+    return card;
+  }
+
+  private colors(sp: SpeciesInfo): HTMLElement {
+    const key = sp.key, current = this.s.colors[key];
     const wrap = h('div', 'skins');
     const head = h('div', 'skins-head');
-    head.append(h('span', '', t('skin')), h('span', 'skins-name', t(`skin_${this.s.skin}`)));
+    head.append(h('span', '', t('skin')), h('span', 'skins-name', tk(`${key}_${current}`)));
     const row = h('div', 'swatches');
-    for (const id of SKIN_IDS) {
-      const b = button('swatch', `skin-${id}`, () => this.h.change('skin', id));
-      b.style.setProperty('--sw', swatchCss(SKINS[id]));
-      b.setAttribute('aria-pressed', String(this.s.skin === id));
-      b.setAttribute('aria-label', t(`skin_${id}`));
-      b.title = t(`skin_${id}`);
+    for (const v of sp.variants) {
+      const b = button('swatch', `${key}-color-${v.id}`, () => this.h.change('colors', { ...this.s.colors, [key]: v.id }));
+      b.style.setProperty('--sw', v.swatch);
+      b.setAttribute('aria-pressed', String(current === v.id));
+      b.setAttribute('aria-label', tk(`${key}_${v.id}`));
+      b.title = tk(`${key}_${v.id}`);
       row.append(b);
     }
     wrap.append(head, row);
@@ -170,27 +195,45 @@ export class Menu {
   }
 
   private scene(): HTMLElement[] {
-    const s = this.s;
+    const s = this.s, theme = s.theme;
     const grounds = h('div', 'cards');
-    for (const g of ['stone', 'sand', 'night'] as const) {
-      const b = button('card', `ground-${g}`, () => this.h.change('ground', g));
-      b.setAttribute('aria-pressed', String(s.ground === g));
+    for (const g of GROUNDS[theme]) {
+      const b = button('card', `ground-${g}`, () => this.h.change('ground', { ...s.ground, [theme]: g }));
+      b.setAttribute('aria-pressed', String(s.ground[theme] === g));
       const preview = h('span', 'card-preview');
-      preview.style.background = GROUND_PREVIEW[g];
-      b.append(preview, h('span', 'card-label', t(`ground_${g}`)));
+      preview.style.backgroundImage = `url(${groundPreview(g)})`;
+      b.append(preview, h('span', 'card-label', tk(`ground_${g}`)));
       grounds.append(b);
     }
+
+    const covers = h('div', 'chips');
+    covers.setAttribute('role', 'group');
+    const chosen = s.covers[theme];
+    for (const { kind, icon } of COVERS[theme]) {
+      const on = chosen.includes(kind);
+      const toggle = () => {
+        const kinds = COVERS[theme].map((c) => c.kind).filter((k) => (k === kind ? !on : chosen.includes(k)));
+        this.h.change('covers', { ...s.covers, [theme]: kinds });
+      };
+      const b = button('chip', `covers-${kind}`, toggle);
+      b.setAttribute('aria-pressed', String(on));
+      b.append(h('span', 'chip-icon', icon), h('span', '', tk(`covers_${kind}`)));
+      covers.append(b);
+    }
+    const coversSection = this.section('covers', covers);
+    coversSection.append(h('p', 'opt-help', t('coversHelp')));
+
     return [
       this.section('ground', grounds),
-      this.section('covers', this.chips('covers', ['none', 'leaves', 'stones', 'both'] as const, (v) => t(`covers_${v}`))),
-      this.section('size', this.chips('size', ['small', 'medium', 'large'] as const, (v) => t(`size_${v}`))),
+      coversSection,
+      this.section('size', this.chips('size', ['small', 'medium', 'large'] as const, (v) => tk(`size_${v}`))),
     ];
   }
 
   private game(): HTMLElement[] {
     const items = [
-      this.section('speed', this.chips('speed', ['slow', 'normal', 'fast'] as const, (v) => t(`speed_${v}`))),
-      this.toggle('sound', 'soundHelp'),
+      this.section('speed', this.chips('speed', ['slow', 'normal', 'fast'] as const, (v) => tk(`speed_${v}`))),
+      this.volume(),
     ];
     if (this.h.micSupported) items.push(this.toggle('mic', 'micHelp'));
     return items;
@@ -203,9 +246,7 @@ export class Menu {
     return sec;
   }
 
-  private chips<K extends 'covers' | 'size' | 'speed'>(
-    key: K, values: readonly Settings[K][], label: (v: Settings[K]) => string,
-  ): HTMLElement {
+  private chips<K extends 'size' | 'speed'>(key: K, values: readonly Settings[K][], label: (v: Settings[K]) => string): HTMLElement {
     const row = h('div', 'chips');
     row.setAttribute('role', 'group');
     for (const v of values) {
@@ -216,7 +257,38 @@ export class Menu {
     return row;
   }
 
-  private toggle(key: 'sound' | 'mic', help: Key): HTMLElement {
+  private volume(): HTMLElement {
+    const sec = h('section', 'opt');
+    const head = h('div', 'volume-head');
+    const value = h('output', 'volume-value');
+    head.append(h('h2', 'opt-label', t('sound')), value);
+    const slider = h('input', 'volume');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '100';
+    slider.step = '5';
+    slider.dataset.focus = 'volume';
+    slider.setAttribute('aria-label', t('sound'));
+    const show = (v: number) => {
+      slider.value = String(Math.round(v * 100));
+      slider.style.setProperty('--fill', `${v * 100}%`);
+      value.textContent = v ? `${Math.round(v * 100)} %` : t('soundOff');
+      slider.setAttribute('aria-valuetext', value.textContent);
+    };
+    show(this.s.volume);
+    slider.addEventListener('input', () => {
+      const v = Number(slider.value) / 100;
+      show(v);
+      this.h.change('volume', v, false);
+    });
+    slider.addEventListener('change', () => this.h.previewVolume());
+    const row = h('div', 'volume-row');
+    row.append(h('span', 'volume-icon', '🔈'), slider, h('span', 'volume-icon', '🔊'));
+    sec.append(head, row, h('p', 'opt-help', t('soundHelp')));
+    return sec;
+  }
+
+  private toggle(key: 'mic', help: Key): HTMLElement {
     const on = this.s[key];
     const b = button('switch-row', `switch-${key}`, () => this.h.change(key, !on));
     b.setAttribute('role', 'switch');

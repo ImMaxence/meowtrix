@@ -1,6 +1,6 @@
-import type { CoverMode } from './game/covers';
+import { ALL_SPECIES, COVERS, GROUNDS, SPECIES, THEMES, type AnimalKey, type Theme } from './catalog';
+import type { CoverKind } from './game/covers';
 import type { GroundTheme } from './game/ground';
-import { SKIN_IDS, type SkinId } from './game/lizard/skin';
 import type { ViewSize } from './game/world';
 import { detectLang, type Lang } from './i18n';
 
@@ -8,26 +8,26 @@ export type Speed = 'slow' | 'normal' | 'fast';
 
 export const SPEED_FACTOR: Record<Speed, number> = { slow: 0.6, normal: 1, fast: 1.45 };
 
-/** Maximum number of each animal on screen. */
-export const MAX_COUNT = { lizards: 4, mice: 3, flies: 3 } as const;
-
-export type AnimalKey = keyof typeof MAX_COUNT;
-
 export interface Settings {
   lang: Lang;
-  lizards: number;
-  mice: number;
-  flies: number;
-  skin: SkinId;
-  covers: CoverMode;
+  theme: Theme;
+  /** How many of each animal; only the current theme's are on screen. */
+  animals: Record<AnimalKey, number>;
+  /** Chosen colour of each animal (a variant id). */
+  colors: Record<AnimalKey, string>;
+  ground: Record<Theme, GroundTheme>;
+  covers: Record<Theme, CoverKind[]>;
   size: ViewSize;
-  ground: GroundTheme;
   speed: Speed;
-  sound: boolean;
+  /** Sound volume, 0 (off) … 1 (loudest). */
+  volume: number;
   mic: boolean;
 }
 
 const KEY = 'meowtrix.settings';
+
+const DEFAULT_ANIMALS: Partial<Record<AnimalKey, number>> = { lizards: 1, goldfish: 2, kois: 1 };
+const DEFAULT_COVERS: Record<Theme, CoverKind[]> = { land: ['leaf', 'stone'], water: ['lily', 'rock', 'weed'] };
 
 const oneOf = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
@@ -35,28 +35,51 @@ const oneOf = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
 const count = (value: unknown, max: number, fallback: number): number =>
   Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max ? (value as number) : fallback;
 
+type Saved = Record<string, unknown>;
+const obj = (v: unknown): Saved => (v && typeof v === 'object' ? (v as Saved) : {});
+
+/** Total number of animals of a theme. */
+export const themeTotal = (s: Settings, theme: Theme): number => SPECIES[theme].reduce((n, sp) => n + s.animals[sp.key], 0);
+
 export function loadSettings(): Settings {
-  let saved: Record<string, unknown> = {};
+  let saved: Saved = {};
   try {
-    saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') ?? {};
+    saved = obj(JSON.parse(localStorage.getItem(KEY) ?? '{}'));
   } catch {
     // Storage blocked or corrupted: use defaults.
   }
-  const s: Settings = {
+  const animals = obj(saved.animals), colors = obj(saved.colors), ground = obj(saved.ground), covers = obj(saved.covers);
+  // Earlier versions saved the land animals, skin, ground and covers flat.
+  const legacy: Saved = { lizards: saved.lizards ?? saved.count, mice: saved.mice, flies: saved.flies };
+  const legacyCovers: Record<string, CoverKind[]> = { none: [], leaves: ['leaf'], stones: ['stone'], both: ['leaf', 'stone'] };
+
+  const s = {
     lang: oneOf(saved.lang, ['fr', 'en'] as const, detectLang()),
-    // `count` is the lizard count saved by earlier versions.
-    lizards: count(saved.lizards ?? saved.count, MAX_COUNT.lizards, 1),
-    mice: count(saved.mice, MAX_COUNT.mice, 0),
-    flies: count(saved.flies, MAX_COUNT.flies, 0),
-    skin: oneOf(saved.skin, SKIN_IDS, 'green'),
-    covers: oneOf(saved.covers, ['none', 'leaves', 'stones', 'both'] as const, 'both'),
+    theme: oneOf(saved.theme, THEMES, 'land'),
+    animals: {} as Record<AnimalKey, number>,
+    colors: {} as Record<AnimalKey, string>,
+    ground: {} as Record<Theme, GroundTheme>,
+    covers: {} as Record<Theme, CoverKind[]>,
     size: oneOf(saved.size, ['small', 'medium', 'large'] as const, 'medium'),
-    ground: oneOf(saved.ground, ['stone', 'sand', 'night'] as const, 'stone'),
     speed: oneOf(saved.speed, ['slow', 'normal', 'fast'] as const, 'normal'),
-    sound: oneOf(saved.sound, [true, false], true),
+    // Earlier versions only had sound on or off.
+    volume: typeof saved.volume === 'number' && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : saved.sound === false ? 0 : 0.7,
     mic: oneOf(saved.mic, [true, false], false),
-  };
-  if (s.lizards + s.mice + s.flies === 0) s.lizards = 1;
+  } satisfies Settings;
+
+  for (const sp of ALL_SPECIES) {
+    s.animals[sp.key] = count(animals[sp.key] ?? legacy[sp.key], sp.max, DEFAULT_ANIMALS[sp.key] ?? 0);
+    const ids = sp.variants.map((v) => v.id);
+    s.colors[sp.key] = oneOf(colors[sp.key] ?? (sp.key === 'lizards' ? saved.skin : undefined), ids, ids[0]);
+  }
+  for (const theme of THEMES) {
+    s.ground[theme] = oneOf(ground[theme] ?? (theme === 'land' ? saved.ground : undefined), GROUNDS[theme], GROUNDS[theme][0]);
+    const kinds = COVERS[theme].map((c) => c.kind);
+    const raw = covers[theme] ?? (theme === 'land' && typeof saved.covers === 'string' ? legacyCovers[saved.covers] : undefined);
+    s.covers[theme] = Array.isArray(raw) ? kinds.filter((k) => raw.includes(k)) : [...DEFAULT_COVERS[theme]];
+    // Keep at least one animal on screen.
+    if (themeTotal(s, theme) === 0) s.animals[SPECIES[theme][0].key] = 1;
+  }
   return s;
 }
 

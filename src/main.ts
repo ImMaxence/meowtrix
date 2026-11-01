@@ -26,6 +26,7 @@ const installHint = $('#install-hint');
 const settings = loadSettings();
 setLang(settings.lang);
 registerServiceWorker();
+$('#version').textContent = `Meowtrix v${__APP_VERSION__}`;
 
 let toastTimer = 0;
 function toast(message: string, ms = 4500): void {
@@ -49,14 +50,16 @@ const world = createWorld();
 if (world) start(world);
 
 function start(world: World): void {
-  world.setGround(settings.ground);
   world.setViewSize(settings.size);
 
   const voice = new Voice();
   const game = new Game(world, voice);
   game.speedFactor = SPEED_FACTOR[settings.speed];
-  game.setCoverMode(settings.covers);
-  game.setPopulation(settings, settings.skin);
+  const applyTheme = () => {
+    world.setGround(settings.ground[settings.theme]);
+    game.setTheme(settings.theme, settings.covers[settings.theme], settings.animals, settings.colors);
+  };
+  applyTheme();
 
   const input = new PointerInput(canvas, world, game);
   const wakeLock = new ScreenWakeLock();
@@ -68,9 +71,9 @@ function start(world: World): void {
   // --- Menu -------------------------------------------------------------------
 
   const options = new Menu(
-    { root: menu, tabs: $('#tabs'), panel: $('#tab-panel'), lang: $('#lang') },
+    { root: menu, themes: $('#themes'), tabs: $('#tabs'), panel: $('#tab-panel'), lang: $('#lang') },
     settings,
-    { change, micSupported },
+    { change, micSupported, previewVolume: () => voice.preview() },
   );
 
   const refreshMenu = () => {
@@ -79,19 +82,22 @@ function start(world: World): void {
     exitFsBtn.hidden = !isFullscreen();
   };
 
-  function change<K extends keyof Settings>(key: K, value: Settings[K]): void {
+  /** `rerender` is false while a slider is dragged: rebuilding the menu would drop the slider. */
+  function change<K extends keyof Settings>(key: K, value: Settings[K], rerender = true): void {
     settings[key] = value;
     saveSettings(settings);
+    if (key === 'volume') voice.setVolume(settings.volume);
+    if (!rerender) return;
     if (key === 'lang') setLang(settings.lang);
-    if (key === 'skin') game.setSkin(settings.skin);
-    if (key === 'lizards' || key === 'mice' || key === 'flies') game.setPopulation(settings, settings.skin);
+    if (key === 'theme') applyTheme();
+    if (key === 'animals' || key === 'colors') game.setPopulation(settings.animals, settings.colors);
     if (key === 'speed') game.speedFactor = SPEED_FACTOR[settings.speed];
-    if (key === 'covers') game.setCoverMode(settings.covers);
+    if (key === 'covers') game.setCovers(settings.covers[settings.theme]);
     if (key === 'size') {
       world.setViewSize(settings.size);
       game.relayout(true);
     }
-    if (key === 'ground') world.setGround(settings.ground);
+    if (key === 'ground') world.setGround(settings.ground[settings.theme]);
     refreshMenu();
   }
 
@@ -110,7 +116,7 @@ function start(world: World): void {
     // Fullscreen and audio must start synchronously inside the click.
     enterFullscreen();
     const ctx = voice.init();
-    voice.setEnabled(settings.sound);
+    voice.setVolume(settings.volume);
     voice.setMuted(false);
     wakeLock.request();
 
@@ -207,6 +213,7 @@ function start(world: World): void {
     last = now;
 
     game.update(dt);
+    world.update(dt);
     if (playing && mic) {
       // Our own sounds and footsteps must not startle the lizards.
       const gated = performance.now() < voice.loudUntil || game.noisy;

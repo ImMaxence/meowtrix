@@ -1,7 +1,7 @@
 {
   "name": "Meowtrix",
   "short_name": "Meowtrix",
-  "description": "Un lézard 3D à chasser pour votre chat.",
+  "description": "Des animaux en 3D à chasser pour votre chat : sur terre ou dans l’eau.",
   "lang": "fr",
   "start_url": "/",
   "scope": "/",

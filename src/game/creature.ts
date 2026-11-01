@@ -5,7 +5,7 @@ import { clamp, damp, wrapAngle } from './math';
 /** Called with a ground point (x, z), a radius and the height of the top of the body there. */
 export type SampleFn = (x: number, z: number, radius: number, top: number) => void;
 
-/** An animal walking on the ground, driven by a Brain. */
+/** An animal moving on the ground (or swimming), driven by a Brain. */
 export interface Walker {
   readonly group: THREE.Object3D;
   /** Ground position of the steering point (x, z). */
@@ -52,8 +52,8 @@ export interface Locomotion {
   lookLimit: number;
 }
 
-/** Shared state and locomotion of the walking animals, built on a Spine. */
-export abstract class GroundCreature implements Walker {
+/** Shared state and locomotion of the animals driven by a Brain. */
+export abstract class Creature implements Walker {
   readonly group = new THREE.Group();
   readonly pos = new THREE.Vector2();
   heading = 0;
@@ -72,14 +72,45 @@ export abstract class GroundCreature implements Walker {
 
   protected time = 0;
   protected lookYaw = 0;
-  protected resetFeet = true;
-  protected abstract readonly spine: Spine;
 
+  abstract readonly bodyX: number;
+  abstract teleport(x: number, z: number, heading: number): void;
+  abstract nearest(x: number, z: number, out: THREE.Vector2): number;
   abstract forEachSample(fn: SampleFn): void;
   abstract fidget(): void;
   abstract display(): number;
   abstract update(dt: number): void;
   abstract dispose(): void;
+
+  distanceTo(x: number, z: number): number {
+    return this.nearest(x, z, NEAREST);
+  }
+
+  /** Moves the steering point toward the targets with limited acceleration and turn rate. */
+  protected locomote(dt: number, m: Locomotion): void {
+    const accel = this.targetSpeed > this.speed ? m.accel : m.decel;
+    this.speed += (this.targetSpeed - this.speed) * damp(accel, dt);
+    if (this.speed < 0.002) this.speed = 0;
+    this.turn(dt, m.turnBase + m.turnPerSpeed * Math.min(this.speed, 2.5));
+    this.pos.x += Math.sin(this.heading) * this.speed * dt;
+    this.pos.y += Math.cos(this.heading) * this.speed * dt;
+    this.lookYaw += (clamp(this.lookTarget, -m.lookLimit, m.lookLimit) - this.lookYaw) * damp(10, dt);
+  }
+
+  /** Turns toward the target heading at up to `maxTurn` rad/s, faster during escape turns. */
+  protected turn(dt: number, maxTurn: number): void {
+    maxTurn += this.turnBoost * 8;
+    this.turnBoost = Math.max(0, this.turnBoost - dt * 2.5);
+    const step = clamp(wrapAngle(this.targetHeading - this.heading), -maxTurn * dt, maxTurn * dt);
+    this.heading = wrapAngle(this.heading + step);
+    this.turnRate = dt > 0 ? step / dt : 0;
+  }
+}
+
+/** A Creature whose body is a Spine: lizards, mammals, fish. */
+export abstract class GroundCreature extends Creature {
+  protected resetFeet = true;
+  protected abstract readonly spine: Spine;
   /** Half width of the body at s, for hit tests. */
   protected abstract halfWidthAt(s: number): number;
 
@@ -96,10 +127,6 @@ export abstract class GroundCreature implements Walker {
     this.resetFeet = true;
   }
 
-  distanceTo(x: number, z: number): number {
-    return this.nearest(x, z, NEAREST);
-  }
-
   nearest(x: number, z: number, out: THREE.Vector2): number {
     let best = Infinity;
     const n = this.spine.count;
@@ -113,21 +140,16 @@ export abstract class GroundCreature implements Walker {
     }
     return best;
   }
+}
 
-  /** Moves the steering point toward the targets with limited acceleration and turn rate. */
-  protected locomote(dt: number, m: Locomotion): void {
-    const accel = this.targetSpeed > this.speed ? m.accel : m.decel;
-    this.speed += (this.targetSpeed - this.speed) * damp(accel, dt);
-    if (this.speed < 0.002) this.speed = 0;
-    const maxTurn = m.turnBase + m.turnPerSpeed * Math.min(this.speed, 2.5) + this.turnBoost * 8;
-    this.turnBoost = Math.max(0, this.turnBoost - dt * 2.5);
-    const step = clamp(wrapAngle(this.targetHeading - this.heading), -maxTurn * dt, maxTurn * dt);
-    this.heading = wrapAngle(this.heading + step);
-    this.turnRate = dt > 0 ? step / dt : 0;
-    this.pos.x += Math.sin(this.heading) * this.speed * dt;
-    this.pos.y += Math.cos(this.heading) * this.speed * dt;
-    this.lookYaw += (clamp(this.lookTarget, -m.lookLimit, m.lookLimit) - this.lookYaw) * damp(10, dt);
-  }
+/** Distance from (x, z) to a capsule around a rigid body's axis; writes the closest axis point. */
+export function capsuleDistance(
+  x: number, z: number, cx: number, cz: number, heading: number, halfLength: number, radius: number, out: THREE.Vector2,
+): number {
+  const fx = Math.sin(heading), fz = Math.cos(heading);
+  const t = clamp((x - cx) * fx + (z - cz) * fz, -halfLength, halfLength);
+  out.set(cx + fx * t, cz + fz * t);
+  return Math.hypot(x - out.x, z - out.y) - radius;
 }
 
 const NEAREST = new THREE.Vector2();

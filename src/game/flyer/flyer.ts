@@ -1,51 +1,81 @@
 import * as THREE from 'three';
-import { placeSegment } from '../body/limbs';
 import type { Cover } from '../covers';
-import { chance, clamp, damp, rand, smoothstep, TAU, wrapAngle } from '../math';
+import { chance, clamp, damp, rand, TAU, wrapAngle } from '../math';
 import type { Bounds } from '../world';
 
-export interface FlyHabitat {
+export interface FlyerHabitat {
   readonly bounds: Bounds;
   readonly covers: readonly Cover[];
   readonly speedFactor: number;
 }
 
-/** The buzz of one fly (see Voice.createBuzz). */
-export interface FlySound {
+/** The sound of one flyer: a buzz or a flutter while flying, and an optional call. */
+export interface FlyerSound {
+  /** `level` 0..1 (0 = landed), `pitch` around 1, `pan` -1..1. */
   update(level: number, pitch: number, pan: number): void;
+  /** A chirp now and then while landed, or an alarm call when it takes off scared. */
+  call?(pan: number, alarm: boolean): void;
   dispose(): void;
+}
+
+/** What the body needs to pose its wings, legs and head. */
+export interface FlyerPose {
+  /** 1 landed … 0 flying. */
+  ground: number;
+  /** Taking a step right now, and the step cycle. */
+  walking: boolean;
+  walkPhase: number;
+  /** Seconds into grooming (or pecking), -1 otherwise. */
+  grooming: number;
+  /** Horizontal speed and climb rate. */
+  speed: number;
+  climb: number;
+  time: number;
+}
+
+export interface FlyerBody {
+  readonly group: THREE.Group;
+  /** Pitch of the body in flight. */
+  readonly airPitch: number;
+  pose(p: FlyerPose, dt: number): void;
+  dispose(): void;
+}
+
+/** How a flyer behaves. Speeds in world units per second, times in seconds. */
+export interface FlightStyle {
+  speed: readonly [number, number];
+  /** Erratic wobble across the flight path (a fly zigzags, a bird flies straight). */
+  wobble: number;
+  altitude: readonly [number, number];
+  /** Chance of hovering on the spot for a moment. */
+  hover: number;
+  flightTime: readonly [number, number];
+  walkTime: readonly [number, number];
+  walkSpeed: number;
+  /** Walking bursts and pauses between them, and how much it turns between bursts. */
+  stepTime: readonly [number, number];
+  pauseTime: readonly [number, number];
+  stepTurn: number;
+  groomChance: number;
+  groomTime: readonly [number, number];
+  /** Distance at which something scares it, landed and flying. */
+  scare: readonly [number, number];
+  /** Fear above which it leaves the screen for a while. */
+  awayFear: number;
+  /** Calls per second while landed. */
+  callRate: number;
 }
 
 type State = 'fly' | 'land' | 'walk' | 'groom' | 'away';
 
-/** Model units → world units: the fly is about 0.15 long (the lizard is 1). */
-const SCALE = 0.16;
-
-const SPHERE = new THREE.SphereGeometry(1, 16, 12);
-const LEG_GEO = new THREE.CylinderGeometry(0.012, 0.018, 1, 5);
-const WING_GEO = (() => {
-  const shape = new THREE.Shape();
-  shape.absellipse(0.34, 0, 0.34, 0.12, 0, TAU, false, 0);
-  return new THREE.ShapeGeometry(shape, 24).rotateX(-Math.PI / 2);
-})();
-
-/** Rest and tucked (in flight) poses of the legs, per pair from front to back, for side +1. */
-const LEGS = [
-  { hip: [0.08, 0.26, 0.24], knee: [0.25, 0.36, 0.34], foot: [0.33, 0, 0.42], tuckKnee: [0.18, 0.2, 0.3], tuckFoot: [0.12, 0.12, 0.18] },
-  { hip: [0.1, 0.24, 0.12], knee: [0.29, 0.36, 0.13], foot: [0.37, 0, 0.11], tuckKnee: [0.2, 0.18, 0.1], tuckFoot: [0.14, 0.1, -0.02] },
-  { hip: [0.08, 0.24, 0.0], knee: [0.26, 0.36, -0.13], foot: [0.34, 0, -0.26], tuckKnee: [0.18, 0.18, -0.12], tuckFoot: [0.12, 0.1, -0.26] },
-] as const;
-
-const v = (a: readonly number[], side: number, out: THREE.Vector3) => out.set(a[0] * side, a[1], a[2]);
-const tA = new THREE.Vector3(), tB = new THREE.Vector3(), tC = new THREE.Vector3();
-const knee = new THREE.Vector3(), foot = new THREE.Vector3(), hip = new THREE.Vector3();
+const tA = new THREE.Vector3(), tB = new THREE.Vector3();
 
 /**
- * A fly: zigzags around the room buzzing, lands, walks in little jerks, rubs its legs,
- * and takes off as soon as something comes near.
+ * An animal that flies around and lands (fly, ladybird, bird): flights between random points,
+ * landings on open ground, walking or hopping, grooming or pecking, and escapes when something
+ * comes near. The look comes from its FlyerBody.
  */
-export class Fly {
-  readonly group = new THREE.Group();
+export class Flyer {
   /** Position; y is the altitude. */
   readonly pos = new THREE.Vector3();
   fear = 0;
@@ -61,63 +91,24 @@ export class Fly {
   private boost = 0;
   private ground = 1;
   private moveLeft = 0;
+  private pauseLeft = 0;
   private walkPhase = 0;
-  private flapPhase = 0;
   private hiddenLeft = 0;
   private readonly seed = rand(0, 100);
-  private readonly wings: THREE.Object3D[] = [];
-  private readonly legs: { side: number; pair: number; femur: THREE.Mesh; tibia: THREE.Mesh }[] = [];
-  private readonly materials: THREE.Material[];
+  private readonly poseInfo: FlyerPose = { ground: 1, walking: false, walkPhase: 0, grooming: -1, speed: 0, climb: 0, time: 0 };
 
-  constructor(private readonly habitat: FlyHabitat, private readonly sound: FlySound) {
-    const dark = new THREE.MeshStandardMaterial({ color: '#25272a', roughness: 0.55 });
-    const eyeMat = new THREE.MeshPhysicalMaterial({ color: '#7a1f14', roughness: 0.25, clearcoat: 1 });
-    const bellyMat = new THREE.MeshPhysicalMaterial({
-      color: '#1d6b4c', metalness: 0.6, roughness: 0.3, iridescence: 1, iridescenceIOR: 1.6,
-    });
-    const wingMat = new THREE.MeshPhysicalMaterial({
-      color: '#dde7ef', transparent: true, opacity: 0.38, roughness: 0.2, side: THREE.DoubleSide,
-      iridescence: 1, depthWrite: false,
-    });
-    this.materials = [dark, eyeMat, bellyMat, wingMat];
-
-    const part = (mat: THREE.Material, s: [number, number, number], p: [number, number, number]) => {
-      const m = new THREE.Mesh(SPHERE, mat);
-      m.scale.set(...s);
-      m.position.set(...p);
-      m.castShadow = true;
-      this.group.add(m);
-      return m;
-    };
-    part(dark, [0.15, 0.14, 0.14], [0, 0.34, 0.42]);
-    part(eyeMat, [0.1, 0.12, 0.1], [0.1, 0.37, 0.44]);
-    part(eyeMat, [0.1, 0.12, 0.1], [-0.1, 0.37, 0.44]);
-    part(dark, [0.19, 0.18, 0.25], [0, 0.35, 0.12]);
-    part(bellyMat, [0.2, 0.15, 0.3], [0, 0.31, -0.3]);
-
-    for (const side of [1, -1]) {
-      const pivot = new THREE.Group();
-      pivot.position.set(side * 0.08, 0.48, 0.16);
-      pivot.rotation.order = 'ZYX';
-      pivot.userData.side = side;
-      const wing = new THREE.Mesh(WING_GEO, wingMat);
-      wing.scale.x = side;
-      pivot.add(wing);
-      this.group.add(pivot);
-      this.wings.push(pivot);
-
-      LEGS.forEach((_, pair) => {
-        const femur = new THREE.Mesh(LEG_GEO, dark);
-        const tibia = new THREE.Mesh(LEG_GEO, dark);
-        femur.castShadow = tibia.castShadow = true;
-        this.group.add(femur, tibia);
-        this.legs.push({ side, pair, femur, tibia });
-      });
-    }
-
-    this.group.scale.setScalar(SCALE);
-    this.group.rotation.order = 'YXZ';
+  constructor(
+    private readonly habitat: FlyerHabitat,
+    private readonly body: FlyerBody,
+    private readonly style: FlightStyle,
+    private readonly sound: FlyerSound,
+  ) {
+    body.group.rotation.order = 'YXZ';
     this.placeOnGround();
+  }
+
+  get group(): THREE.Group {
+    return this.body.group;
   }
 
   /** Taking off or flying: used to keep the microphone from hearing the buzz. */
@@ -125,11 +116,12 @@ export class Fly {
     return this.ground < 0.9 && this.group.visible;
   }
 
-  /** Something touched the screen; (x, z) is the touch projected at the fly's altitude. */
+  /** Something touched the screen; (x, z) is the touch projected at the flyer's altitude. */
   touch(x: number, z: number): void {
     if (!this.group.visible) return;
     const d = Math.hypot(this.pos.x - x, this.pos.z - z);
-    if (this.isLanded() ? d < 0.4 : d < 0.25) {
+    const [landed, flying] = this.style.scare;
+    if (this.isLanded() ? d < landed : d < flying) {
       this.fear = Math.min(1, this.fear + (d < 0.08 ? 0.45 : 0.25));
       this.escape(x, z);
     }
@@ -138,7 +130,8 @@ export class Fly {
   pointer(x: number, z: number, speed: number): void {
     if (!this.group.visible || speed < 0.5) return;
     const d = Math.hypot(this.pos.x - x, this.pos.z - z);
-    if (d < (this.isLanded() ? 0.3 : 0.2)) this.escape(x, z);
+    const [landed, flying] = this.style.scare;
+    if (d < (this.isLanded() ? landed * 0.75 : flying * 0.8)) this.escape(x, z);
   }
 
   noise(level: 1 | 2): void {
@@ -159,22 +152,25 @@ export class Fly {
       case 'groom': this.groom(); break;
       case 'away': this.away(dt); break;
     }
+    if (this.isLanded() && this.group.visible && chance(this.style.callRate * dt)) this.sound.call?.(this.pan(), false);
 
     const flying = this.state === 'fly' || this.state === 'away' || (this.state === 'land' && this.pos.y > 0.02);
     this.ground += ((flying ? 0 : 1) - this.ground) * damp(flying ? 12 : 6, dt);
     this.pose(dt);
 
-    const b = this.habitat.bounds;
-    const half = (b.maxX - b.minX) / 2 || 1;
-    const pan = clamp((this.pos.x - (b.minX + b.maxX) / 2) / half, -1, 1) * 0.85;
     const hSpeed = Math.hypot(this.vel.x, this.vel.z);
-    this.sound.update(this.group.visible ? 1 - this.ground : 0, 1 + 0.12 * Math.min(hSpeed / 2.5, 1) + 0.06 * this.vel.y, pan);
+    this.sound.update(this.group.visible ? 1 - this.ground : 0, 1 + 0.12 * Math.min(hSpeed / 2.5, 1) + 0.06 * this.vel.y, this.pan());
   }
 
   dispose(): void {
     this.sound.dispose();
-    this.materials.forEach((m) => m.dispose());
-    this.group.removeFromParent();
+    this.body.dispose();
+  }
+
+  private pan(): number {
+    const b = this.habitat.bounds;
+    const half = (b.maxX - b.minX) / 2 || 1;
+    return clamp((this.pos.x - (b.minX + b.maxX) / 2) / half, -1, 1) * 0.85;
   }
 
   private isLanded(): boolean {
@@ -182,19 +178,21 @@ export class Fly {
   }
 
   private go(state: State): void {
+    const s = this.style;
     this.state = state;
     this.t = 0;
     switch (state) {
       case 'fly':
-        this.dur = rand(3, 9);
+        this.dur = rand(s.flightTime[0], s.flightTime[1]);
         this.retarget = 0;
         break;
       case 'walk':
-        this.dur = rand(2, 7);
+        this.dur = rand(s.walkTime[0], s.walkTime[1]);
         this.moveLeft = 0;
+        this.pauseLeft = rand(s.pauseTime[0], s.pauseTime[1]);
         break;
       case 'groom':
-        this.dur = rand(1, 2.5);
+        this.dur = rand(s.groomTime[0], s.groomTime[1]);
         break;
       case 'away':
         this.pickExit();
@@ -206,17 +204,21 @@ export class Fly {
   }
 
   private escape(x: number, z: number): void {
-    if (this.fear > 0.85) {
+    const wasLanded = this.isLanded();
+    if (this.fear > this.style.awayFear) {
+      if (wasLanded) this.sound.call?.(this.pan(), true);
       this.go('away');
       this.boost = 0.8;
       return;
     }
+    if (wasLanded) this.sound.call?.(this.pan(), true);
     let dx = this.pos.x - x, dz = this.pos.z - z;
     const len = Math.hypot(dx, dz) || 1;
     dx /= len;
     dz /= len;
     const dist = rand(1, 1.8);
-    this.target.set(this.pos.x + dx * dist + rand(-0.4, 0.4), rand(0.35, 0.75), this.pos.z + dz * dist + rand(-0.4, 0.4));
+    const [lo, hi] = this.style.altitude;
+    this.target.set(this.pos.x + dx * dist + rand(-0.4, 0.4), rand(lo + 0.1, hi), this.pos.z + dz * dist + rand(-0.4, 0.4));
     this.clampInside(this.target, 0.2);
     this.vel.y = Math.max(this.vel.y, 1.2);
     this.boost = 0.7;
@@ -224,30 +226,31 @@ export class Fly {
     this.retarget = rand(0.5, 0.9);
   }
 
-  /** Zigzag flight between random points, sometimes hovering. */
+  /** Flight between random points, sometimes hovering. */
   private flyAround(dt: number): void {
+    const s = this.style;
     this.retarget -= dt;
     if (this.retarget <= 0 || this.pos.distanceTo(this.target) < 0.2) {
-      if (chance(0.2)) {
+      if (chance(s.hover)) {
         this.target.copy(this.pos).add(tA.set(rand(-0.08, 0.08), rand(-0.05, 0.05), rand(-0.08, 0.08)));
         this.speed = 0.3;
         this.retarget = rand(0.4, 1);
       } else {
         const b = this.habitat.bounds;
-        this.target.set(rand(b.minX, b.maxX), rand(0.25, 0.75), rand(b.minZ, b.maxZ));
+        this.target.set(rand(b.minX, b.maxX), rand(s.altitude[0], s.altitude[1]), rand(b.minZ, b.maxZ));
         this.clampInside(this.target, 0.2);
-        this.speed = rand(1.2, 2.2);
-        this.retarget = rand(0.4, 1.5);
+        this.speed = rand(s.speed[0], s.speed[1]);
+        this.retarget = rand(0.4, 1.5) / Math.max(s.wobble * 2, 0.5);
       }
     }
     this.steer(dt, this.target, this.speed * (this.boost > 0 ? 1.8 : 1));
-    this.pos.y = clamp(this.pos.y, 0.05, 0.95);
+    this.pos.y = clamp(this.pos.y, 0.05, s.altitude[1] + 0.2);
     if (this.t > this.dur && this.boost <= 0) this.pickLanding();
   }
 
   private land(dt: number): void {
     const d = this.pos.distanceTo(this.target);
-    this.steer(dt, this.target, Math.min(1.4, d * 2.5 + 0.1));
+    this.steer(dt, this.target, Math.min(this.style.speed[0], d * 2.5 + 0.1));
     if (this.pos.y < 0.015 && Math.hypot(this.pos.x - this.target.x, this.pos.z - this.target.z) < 0.06) {
       this.pos.y = 0;
       this.vel.set(0, 0, 0);
@@ -255,20 +258,30 @@ export class Fly {
     }
   }
 
-  /** Little jerky steps and quick turns on the spot. */
+  /** Steps (or hops) in bursts, turning between them. */
   private walk(dt: number): void {
-    this.moveLeft -= dt;
+    const s = this.style;
     if (this.moveLeft > 0) {
-      const sp = 0.25 * this.habitat.speedFactor;
+      this.moveLeft -= dt;
+      const sp = s.walkSpeed * this.habitat.speedFactor;
       this.pos.x += Math.sin(this.heading) * sp * dt;
       this.pos.z += Math.cos(this.heading) * sp * dt;
-      this.walkPhase += dt * 14;
-    } else if (this.moveLeft < -rand(0.3, 1.2)) {
-      this.heading += rand(-1.6, 1.6);
-      this.moveLeft = rand(0.1, 0.4);
+      this.walkPhase += dt * TAU * 2.2;
+      if (this.moveLeft <= 0) this.pauseLeft = rand(s.pauseTime[0], s.pauseTime[1]);
+    } else {
+      this.pauseLeft -= dt;
+      if (this.pauseLeft <= 0) {
+        this.heading += rand(-s.stepTurn, s.stepTurn);
+        this.moveLeft = rand(s.stepTime[0], s.stepTime[1]);
+      }
+    }
+    // Walking off screen: turn back toward the middle.
+    const b = this.habitat.bounds, p = this.pos;
+    if (p.x < b.minX + 0.15 || p.x > b.maxX - 0.15 || p.z < b.minZ + 0.15 || p.z > b.maxZ - 0.15) {
+      this.heading = Math.atan2((b.minX + b.maxX) / 2 - p.x, (b.minZ + b.maxZ) / 2 - p.z);
     }
     if (this.t > this.dur) {
-      if (chance(0.35)) this.go('groom');
+      if (chance(s.groomChance)) this.go('groom');
       else this.takeOff();
     }
   }
@@ -286,20 +299,20 @@ export class Fly {
       if (this.hiddenLeft <= 0) this.reenter();
       return;
     }
-    this.steer(dt, this.target, 2.4);
+    this.steer(dt, this.target, this.style.speed[1] * 1.2);
     const b = this.habitat.bounds, p = this.pos;
-    if (Math.max(b.minX - p.x, p.x - b.maxX, b.minZ - p.z, p.z - b.maxZ) > 0.5) {
+    if (Math.max(b.minX - p.x, p.x - b.maxX, b.minZ - p.z, p.z - b.maxZ) > 0.6) {
       this.group.visible = false;
       this.hiddenLeft = rand(3, 8);
     }
   }
 
   private takeOff(): void {
-    const b = this.habitat.bounds;
-    this.target.set(rand(b.minX, b.maxX), rand(0.3, 0.7), rand(b.minZ, b.maxZ));
+    const s = this.style, b = this.habitat.bounds;
+    this.target.set(rand(b.minX, b.maxX), rand(s.altitude[0] + 0.05, s.altitude[1]), rand(b.minZ, b.maxZ));
     this.clampInside(this.target, 0.2);
     this.vel.y = 0.9;
-    this.speed = rand(1.2, 2);
+    this.speed = rand(s.speed[0], s.speed[1]);
     this.go('fly');
     this.retarget = rand(0.4, 1.2);
   }
@@ -311,7 +324,7 @@ export class Fly {
     if (d > 1e-4) desired.multiplyScalar(s / d);
     // Erratic wobble across the flight path.
     const k = this.t * 1.7 + this.seed;
-    desired.add(tB.set(Math.sin(k * 4.3) + Math.sin(k * 7.9), Math.sin(k * 5.1) * 0.5, Math.cos(k * 3.7) + Math.sin(k * 6.3)).multiplyScalar(0.45 * s));
+    desired.add(tB.set(Math.sin(k * 4.3) + Math.sin(k * 7.9), Math.sin(k * 5.1) * 0.5, Math.cos(k * 3.7) + Math.sin(k * 6.3)).multiplyScalar(this.style.wobble * s));
     this.vel.lerp(desired, damp(5, dt));
     this.pos.addScaledVector(this.vel, dt);
     if (Math.hypot(this.vel.x, this.vel.z) > 0.15) {
@@ -343,7 +356,7 @@ export class Fly {
       [b.maxZ - p.z, p.x, b.maxZ + 1],
     ];
     edges.sort((a, c) => a[0] - c[0]);
-    this.target.set(edges[0][1], 0.6, edges[0][2]);
+    this.target.set(edges[0][1], this.style.altitude[1], edges[0][2]);
   }
 
   private reenter(): void {
@@ -370,39 +383,20 @@ export class Fly {
     p.z = clamp(p.z, b.minZ + inset, Math.max(b.minZ + inset, b.maxZ - inset));
   }
 
-  /** Body attitude, wings and legs. */
+  /** Body attitude; the body poses its own wings and legs. */
   private pose(dt: number): void {
-    const g = this.ground;
-    const air = 1 - g;
+    const air = 1 - this.ground;
     const turn = wrapAngle(Math.atan2(this.vel.x, this.vel.z) - this.heading);
     this.group.position.copy(this.pos);
-    this.group.rotation.set(-0.15 * air + 0.05 * clamp(this.vel.y, -1, 1), this.heading, clamp(turn, -0.5, 0.5) * air);
-
-    this.flapPhase += dt * TAU * 31;
-    for (const pivot of this.wings) {
-      const side = pivot.userData.side as number;
-      pivot.rotation.y = side * (1.13 * g + 0.35 * air);
-      pivot.rotation.z = side * air * (0.4 + 0.7 * Math.sin(this.flapPhase));
-    }
-
-    const grooming = this.state === 'groom' ? 1 : 0;
-    for (const leg of this.legs) {
-      const L = LEGS[leg.pair];
-      const tripod = (leg.pair + (leg.side > 0 ? 0 : 1)) % 2;
-      const step = this.state === 'walk' && this.moveLeft > 0 ? 0.05 * Math.sin(this.walkPhase + tripod * Math.PI) : 0;
-      v(L.hip, leg.side, hip);
-      v(L.knee, leg.side, knee).lerp(v(L.tuckKnee, leg.side, tA), air);
-      v(L.foot, leg.side, foot).lerp(v(L.tuckFoot, leg.side, tB), air);
-      foot.z += step;
-      if (leg.pair === 0 && grooming) {
-        // Front legs rub against each other in front of the head.
-        const rub = 0.04 * Math.sin(this.t * 22) * leg.side;
-        tC.set(leg.side * 0.04 + rub, 0.24, 0.62);
-        foot.lerp(tC, smoothstep(0, 0.3, this.t));
-        knee.lerp(tC.set(leg.side * 0.16, 0.42, 0.46), smoothstep(0, 0.3, this.t));
-      }
-      placeSegment(leg.femur, hip, knee);
-      placeSegment(leg.tibia, knee, foot);
-    }
+    this.group.rotation.set(this.body.airPitch * air + 0.05 * clamp(this.vel.y, -1, 1), this.heading, clamp(turn, -0.5, 0.5) * air);
+    const p = this.poseInfo;
+    p.ground = this.ground;
+    p.walking = this.state === 'walk' && this.moveLeft > 0;
+    p.walkPhase = this.walkPhase;
+    p.grooming = this.state === 'groom' ? this.t : -1;
+    p.speed = Math.hypot(this.vel.x, this.vel.z);
+    p.climb = this.vel.y;
+    p.time += dt;
+    this.body.pose(p, dt);
   }
 }

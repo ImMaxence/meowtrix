@@ -93,8 +93,8 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   width: min(480px, 100%);
-  /* Fixed height so the panel doesn't jump when switching tabs. */
-  height: min(700px, 100%);
+  /* Fixed height so the panel doesn't jump when switching tabs; as tall as the screen allows. */
+  height: min(1000px, 100%);
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--panel);
@@ -157,6 +157,52 @@ button:focus-visible {
   color: var(--accent-ink);
 }
 
+/* --- Land / water ------------------------------------------------------- */
+
+.themes {
+  display: flex;
+  gap: 8px;
+  margin: 0 16px 10px;
+}
+
+.theme {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 1.05rem;
+  font-weight: 800;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.theme-land {
+  background: linear-gradient(135deg, rgba(120, 160, 70, 0.14), rgba(140, 100, 60, 0.12));
+}
+
+.theme-water {
+  background: linear-gradient(135deg, rgba(60, 150, 200, 0.16), rgba(40, 90, 160, 0.14));
+}
+
+.theme[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.theme-water[aria-pressed='true'] {
+  --accent: #7fd3ff;
+}
+
+.theme-icon {
+  font-size: 1.3rem;
+}
+
 /* --- Tabs --------------------------------------------------------------- */
 
 .tabs {
@@ -206,6 +252,19 @@ button:focus-visible {
 }
 
 /* --- Animals tab -------------------------------------------------------- */
+
+.group-label {
+  margin: 6px 4px -4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.group-label:first-child {
+  margin-top: 0;
+}
 
 .species {
   border: 1px solid var(--line);
@@ -323,7 +382,8 @@ button:focus-visible {
   padding: 0;
   border: 2px solid transparent;
   border-radius: 50%;
-  background: var(--sw);
+  /* Sized to the border box: otherwise the gradient repeats under the transparent border. */
+  background: var(--sw) border-box;
 }
 
 .swatch[aria-pressed='true'] {
@@ -388,15 +448,100 @@ button:focus-visible {
   text-align: center;
 }
 
+.chip-icon {
+  margin-right: 6px;
+}
+
+.opt-help {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .card-preview {
   display: block;
   height: 48px;
   border-radius: 8px;
+  background: center / cover;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .card-label {
   font-weight: 650;
+}
+
+.volume-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.volume-value {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.volume-icon {
+  flex: none;
+  font-size: 1.2rem;
+}
+
+.volume {
+  --fill: 70%;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.volume::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) 0 var(--fill), rgba(255, 255, 255, 0.16) var(--fill) 100%);
+}
+
+.volume::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) 0 var(--fill), rgba(255, 255, 255, 0.16) var(--fill) 100%);
+}
+
+.volume::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.volume::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.volume:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .switch-row {
@@ -509,6 +654,14 @@ button:focus-visible {
   color: #ffb4a6;
 }
 
+.version {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
 .note {
   margin: 10px 0 0;
   color: var(--muted);
@@ -578,6 +731,11 @@ button:focus-visible {
   stroke: currentColor;
   stroke-width: 2.5;
   stroke-linecap: round;
+}
+
+.hold .hand {
+  stroke-width: 1.9;
+  stroke-linejoin: round;
 }
 
 .hold .track {

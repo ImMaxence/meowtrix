@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { clamp, smoothstep, TAU } from '../math';
 import { noise3 } from '../noise';
-import { S_EYE, halfHeight, halfWidth } from './profile';
+import { banded, type Variant } from '../variant';
+import { LIZARD_BUILD, type LizardBuild } from './profile';
 
-export type SkinId = 'green' | 'gecko' | 'skink' | 'desert';
-export const SKIN_IDS: readonly SkinId[] = ['green', 'gecko', 'skink', 'desert'];
 type Pattern = 'reticulate' | 'spots' | 'stripes' | 'bands';
 
-export interface SkinPreset {
-  id: SkinId;
+export interface SkinPreset extends Variant {
   base: string;
   dorsal: string;
   belly: string;
@@ -20,29 +18,43 @@ export interface SkinPreset {
   eye: string;
 }
 
-export const SKINS: Record<SkinId, SkinPreset> = {
-  green: {
+const skin = (p: Omit<SkinPreset, 'swatch'>): SkinPreset =>
+  // A gradient approximating the skin, for the menu swatches.
+  ({ ...p, swatch: banded(p.dorsal, p.pattern, p.tail ?? p.base) });
+
+export const LIZARD_SKINS: readonly SkinPreset[] = [
+  skin({
     id: 'green', base: '#62a336', dorsal: '#4b8527', belly: '#d9e6ae', pattern: '#2f5a19',
     patterns: ['reticulate'], limb: '#548f2d', eye: '#2a1c0c',
-  },
-  gecko: {
+  }),
+  skin({
     id: 'gecko', base: '#e3b544', dorsal: '#d9a537', belly: '#f3ead2', pattern: '#2b2016',
     patterns: ['spots', 'bands'], limb: '#dcb253', eye: '#1c1610',
-  },
-  skink: {
+  }),
+  skin({
     id: 'skink', base: '#3b3631', dorsal: '#2c2824', belly: '#d8d2c0', pattern: '#f0de85',
     patterns: ['stripes'], tail: '#2f86ff', limb: '#3a3530', eye: '#120d08',
-  },
-  desert: {
+  }),
+  skin({
     id: 'desert', base: '#d4a668', dorsal: '#c08e52', belly: '#f1e6cf', pattern: '#6e4422',
     patterns: ['bands', 'reticulate'], limb: '#c99a5c', eye: '#24180c',
-  },
-};
+  }),
+];
 
-/** A CSS gradient approximating the skin, for the menu swatches. */
-export function swatchCss(p: SkinPreset): string {
-  return `linear-gradient(135deg, ${p.dorsal} 0 45%, ${p.pattern} 45% 58%, ${p.tail ?? p.base} 58% 100%)`;
-}
+export const LONGTAIL_SKINS: readonly SkinPreset[] = [
+  skin({
+    id: 'grass', base: '#8c6a3e', dorsal: '#76572f', belly: '#ece3c4', pattern: '#e3d79a',
+    patterns: ['stripes'], limb: '#866639', eye: '#1e150c',
+  }),
+  skin({
+    id: 'emerald', base: '#4cab36', dorsal: '#3c962a', belly: '#e7f1c4', pattern: '#f3eeb6',
+    patterns: ['stripes'], limb: '#47a033', eye: '#20170c',
+  }),
+  skin({
+    id: 'wall', base: '#8a7a5f', dorsal: '#6e604b', belly: '#ebdcbc', pattern: '#33281d',
+    patterns: ['reticulate', 'spots'], limb: '#7f7058', eye: '#1c140c',
+  }),
+];
 
 type RGB = [number, number, number];
 
@@ -52,8 +64,9 @@ const hex = (h: string): RGB => {
 };
 
 /** Texture layout: u runs along the body (snout 0 → tail tip 1), v runs around it. */
-const W = 1024;
 const H = 256;
+/** Head details, measured on the standard lizard. */
+const S_EYE = LIZARD_BUILD.sEye;
 const SCALE_SIZE = 0.0045;
 
 /** Distance in v between two points on the ring, accounting for wrap-around. */
@@ -63,15 +76,18 @@ const dv = (a: number, b: number) => {
 };
 
 let limbTexture: THREE.CanvasTexture | null = null;
-const skinCache = new Map<SkinId, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture }>();
+const skinCache = new Map<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture }>();
 
-/** Skin textures, painted once per preset and shared by every lizard wearing it. */
-export function skinTextures(p: SkinPreset, anisotropy: number): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
-  let textures = skinCache.get(p.id);
+/** Skin textures, painted once per body shape and preset, and shared by every lizard wearing them. */
+export function skinTextures(
+  p: SkinPreset, build: LizardBuild, anisotropy: number,
+): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
+  const key = `${build.id}:${p.id}`;
+  let textures = skinCache.get(key);
   if (!textures) {
-    textures = makeSkinTextures(p);
+    textures = makeSkinTextures(p, build);
     textures.map.anisotropy = anisotropy;
-    skinCache.set(p.id, textures);
+    skinCache.set(key, textures);
   }
   return textures;
 }
@@ -106,8 +122,12 @@ function makeLimbBump(): THREE.CanvasTexture {
   return tex;
 }
 
-/** Paints the body colour map and the matching scale bump map. */
-function makeSkinTextures(p: SkinPreset): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
+/**
+ * Paints the body colour map and the matching scale bump map. Patterns are placed on the
+ * standard lizard (u) and sized in world units (a), so a longer tail just gets more of them.
+ */
+function makeSkinTextures(p: SkinPreset, build: LizardBuild): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
+  const W = Math.round(1024 * build.length);
   const colour = document.createElement('canvas');
   const bumpCanvas = document.createElement('canvas');
   colour.width = bumpCanvas.width = W;
@@ -123,10 +143,12 @@ function makeSkinTextures(p: SkinPreset): { map: THREE.CanvasTexture; bump: THRE
 
   // Per-column radius of the body, so patterns stay round on thin parts.
   const radius = new Float32Array(W);
+  const std = new Float32Array(W);
   for (let x = 0; x < W; x++) {
     const s = (x + 0.5) / W;
-    const w = halfWidth(s), h = halfHeight(s);
+    const w = build.halfWidth(s), h = build.halfHeight(s);
     radius[x] = Math.sqrt((w * w + h * h) / 2);
+    std[x] = build.toStd(s);
   }
 
   let r = 0, g = 0, b = 0;
@@ -147,7 +169,8 @@ function makeSkinTextures(p: SkinPreset): { map: THREE.CanvasTexture; bump: THRE
     const fromSpine = Math.acos(clamp(top, -1, 1)) / Math.PI;
 
     for (let x = 0; x < W; x++) {
-      const u = (x + 0.5) / W;
+      const u = std[x];
+      const a = ((x + 0.5) / W) * build.length;
       const rad = radius[x];
       const ny = ca * rad, nz = sa * rad;
 
@@ -161,13 +184,13 @@ function makeSkinTextures(p: SkinPreset): { map: THREE.CanvasTexture; bump: THRE
       }
 
       if (has('reticulate')) {
-        const n = noise3(u * 70, ny * 70, nz * 70, 7);
+        const n = noise3(a * 70, ny * 70, nz * 70, 7);
         const k = 0.86 + 0.28 * n;
         r *= k; g *= k; b *= k;
         blend(pattern, smoothstep(0.62, 0.82, n) * 0.55 * back);
       }
       if (has('spots')) {
-        const n = noise3(u * 48, ny * 48, nz * 48, 3) * 0.7 + noise3(u * 110, ny * 110, nz * 110, 5) * 0.3;
+        const n = noise3(a * 48, ny * 48, nz * 48, 3) * 0.7 + noise3(a * 110, ny * 110, nz * 110, 5) * 0.3;
         blend(pattern, smoothstep(0.6, 0.67, n) * smoothstep(-0.55, -0.2, top) * smoothstep(0.02, 0.05, u));
       }
       if (has('stripes')) {
@@ -177,8 +200,8 @@ function makeSkinTextures(p: SkinPreset): { map: THREE.CanvasTexture; bump: THRE
         blend(pattern, clamp(stripe, 0, 1) * smoothstep(0.75, 0.42, u) * smoothstep(0.015, 0.05, u));
       }
       if (has('bands') && u > 0.14) {
-        const n = noise3(u * 30, ny * 30, nz * 30, 11);
-        const band = smoothstep(0.35, 0.75, Math.sin(TAU * u * 15 + n * 2.5));
+        const n = noise3(a * 30, ny * 30, nz * 30, 11);
+        const band = smoothstep(0.35, 0.75, Math.sin(TAU * a * 15 + n * 2.5));
         blend(pattern, band * smoothstep(-0.45, -0.1, top) * (u > 0.42 ? 0.8 : 0.45));
       }
 
@@ -208,7 +231,7 @@ function makeSkinTextures(p: SkinPreset): { map: THREE.CanvasTexture; bump: THRE
 
       // Scales: small rounded cells, offset every other row.
       const circumference = TAU * rad;
-      const cu = u / SCALE_SIZE;
+      const cu = a / SCALE_SIZE;
       const row = Math.floor(cu);
       const cv = v * (circumference / SCALE_SIZE) + (row & 1 ? 0.5 : 0);
       const fu = cu - row, fv = cv - Math.floor(cv);

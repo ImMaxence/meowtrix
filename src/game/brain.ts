@@ -28,6 +28,10 @@ export interface Habitat {
 
 /** How a species behaves. Speeds are in world units per second (the lizard is 1 long). */
 export interface Species {
+  /** Body length, so the whole animal is off screen before it counts as gone. */
+  size: number;
+  /** Height of the back: the animal only hides under covers with that much room. */
+  height: number;
   wanderSpeed: readonly [number, number];
   fleeSpeed: number;
   /** Chance to go and rest under a cover after idling. */
@@ -40,13 +44,6 @@ export interface Species {
   callChance: number;
 }
 
-export const LIZARD: Species = {
-  wanderSpeed: [0.6, 1.5], fleeSpeed: 3, restInCover: 0.35, edgeLove: 0, displayChance: 0.25, callChance: 0.18,
-};
-
-export const MOUSE: Species = {
-  wanderSpeed: [0.8, 1.8], fleeSpeed: 3.4, restInCover: 0.45, edgeLove: 0.6, displayChance: 0.35, callChance: 0.12,
-};
 
 export interface BrainVoice {
   /** Spontaneous call (gecko chirps, mouse squeaks). */
@@ -74,6 +71,8 @@ export class Brain {
   private readonly lookPoint = new Vector2();
   private looking = false;
   private cover: Cover | null = null;
+  /** Still on the way to the cover's entrance (inside a boot). */
+  private viaEntry = false;
   private moveLeft = 0;
   private pauseLeft = 0;
   private moveSpeed = 1;
@@ -187,6 +186,7 @@ export class Brain {
 
   private go(state: State): void {
     const B = this.body;
+    const left = this.cover;
     if (state !== 'hide' && state !== 'covered') this.releaseCover();
     this.state = state;
     this.t = 0;
@@ -239,9 +239,10 @@ export class Brain {
         this.nextFlick = rand(1, 3);
         break;
       case 'peek': {
-        // Creep forward until the head pokes out, then look around.
+        // Creep forward until the head pokes out (back out through the entrance), then look around.
         const h = B.heading;
-        this.target.set(B.pos.x + Math.sin(h) * 0.35, B.pos.y + Math.cos(h) * 0.35);
+        if (left?.entry) this.target.set(left.entry.x * 2 - left.x, left.entry.y * 2 - left.z);
+        else this.target.set(B.pos.x + Math.sin(h) * 0.35, B.pos.y + Math.cos(h) * 0.35);
         this.clampInside(this.target);
         this.moveSpeed = 0.35;
         this.dur = 1.6;
@@ -250,7 +251,7 @@ export class Brain {
       case 'exit':
         this.pickExit();
         this.moveSpeed = this.species.fleeSpeed * 0.85 + this.fear * 0.6;
-        this.dur = 4;
+        this.dur = 4 + this.species.size;
         break;
       case 'hidden':
         B.targetSpeed = 0;
@@ -259,7 +260,7 @@ export class Brain {
       case 'enter':
         this.spawnOutside();
         this.moveSpeed = 1.2;
-        this.dur = 6;
+        this.dur = 6 + this.species.size;
         break;
     }
   }
@@ -346,13 +347,18 @@ export class Brain {
 
   /** Heading for the cover picked in hideIn(). */
   private hide(): void {
-    if (!this.cover || this.cover.removed) {
+    const c = this.cover;
+    if (!c || c.removed) {
       this.go('alert');
       return;
     }
+    if (this.viaEntry && c.entry && c.entry.distanceTo(this.body.pos) < 0.12) {
+      this.viaEntry = false;
+      c.hideSpot(this.body.pos.x, this.body.pos.y, this.target);
+    }
     const dist = this.target.distanceTo(this.body.pos);
     this.steer(this.target, Math.min(this.moveSpeed, dist * 5 + 0.35));
-    if (dist < 0.09) this.go('covered');
+    if (dist < 0.09 && !this.viaEntry) this.go('covered');
     else if (this.t > this.dur) this.go('alert');
   }
 
@@ -377,7 +383,7 @@ export class Brain {
 
   private exit(): void {
     this.steer(this.target, this.moveSpeed);
-    if (this.outside(this.body.pos) > 1.15 || this.t > this.dur) this.go('hidden');
+    if (this.outside(this.body.pos) > this.species.size + 0.15 || this.t > this.dur) this.go('hidden');
   }
 
   private hidden(): void {
@@ -429,6 +435,11 @@ export class Brain {
       push(n.x - tmp.x, n.y - tmp.y, d, PERSONAL_SPACE);
     }
     for (const c of this.habitat.covers) {
+      if (c.blocking && c !== this.cover) {
+        // Swim around underwater rocks, unless going to hide beneath one.
+        const ax = n.x - c.x, az = n.y - c.z;
+        push(ax, az, Math.hypot(ax, az) - c.radius, 0.35);
+      }
       const s = c.solids;
       for (let k = 0; k < s.length; k += 3) {
         const ax = n.x - s[k], az = n.y - s[k + 1];
@@ -443,18 +454,10 @@ export class Brain {
     this.releaseCover();
     this.cover = cover;
     cover.occupant = this.body;
-    // Stop just past the centre, so head and body end up underneath.
     const n = this.body.pos;
-    let dx = cover.x - n.x, dz = cover.z - n.y;
-    const len = Math.hypot(dx, dz);
-    if (len < 1e-3) {
-      dx = Math.sin(this.body.heading);
-      dz = Math.cos(this.body.heading);
-    } else {
-      dx /= len;
-      dz /= len;
-    }
-    this.target.set(cover.x + dx * 0.08, cover.z + dz * 0.08);
+    this.viaEntry = !!cover.entry && cover.entry.distanceTo(n) > 0.12;
+    if (this.viaEntry) this.target.copy(cover.entry!);
+    else cover.hideSpot(n.x, n.y, this.target);
     this.moveSpeed = speed;
     this.go('hide');
   }
@@ -472,6 +475,7 @@ export class Brain {
     let bestDist = maxDist;
     for (const c of this.habitat.covers) {
       if (c.occupant && c.occupant !== this.body) continue;
+      if (c.clearance < this.species.height) continue;
       const d = c.distanceTo(n.x, n.y);
       if (d > bestDist) continue;
       if (avoidThreat) {
@@ -511,6 +515,7 @@ export class Brain {
       }
       this.clampInside(this.target);
       if (this.target.distanceTo(this.body.pos) < minDist) continue;
+      if (this.habitat.covers.some((c) => c.blocking && c.distanceTo(this.target.x, this.target.y) < c.radius + 0.2)) continue;
       if (this.habitat.walkers.some((o) => o !== this.body && o.pos.distanceTo(this.target) < 0.5)) continue;
       return;
     }
@@ -539,11 +544,12 @@ export class Brain {
   private pickExit(): void {
     const b = this.habitat.bounds, n = this.body.pos;
     const away = Math.atan2(n.x - this.threat.x, n.y - this.threat.y);
+    const far = this.species.size + 0.6;
     const edges: [number, number, number][] = [
-      [n.x - b.minX, b.minX - 1.6, n.y],
-      [b.maxX - n.x, b.maxX + 1.6, n.y],
-      [n.y - b.minZ, n.x, b.minZ - 1.6],
-      [b.maxZ - n.y, n.x, b.maxZ + 1.6],
+      [n.x - b.minX, b.minX - far, n.y],
+      [b.maxX - n.x, b.maxX + far, n.y],
+      [n.y - b.minZ, n.x, b.minZ - far],
+      [b.maxZ - n.y, n.x, b.maxZ + far],
     ];
     let best = Infinity;
     for (const [dist, x, z] of edges) {
@@ -562,16 +568,17 @@ export class Brain {
     const edge = Math.floor(Math.random() * 4);
     const along = rand(0.15, 0.85);
     const x = b.minX + (b.maxX - b.minX) * along, z = b.minZ + (b.maxZ - b.minZ) * along;
+    const far = this.species.size + 0.2;
     const spawn: [number, number, number][] = [
-      [b.minX - 1.2, z, Math.PI / 2],
-      [b.maxX + 1.2, z, -Math.PI / 2],
-      [x, b.minZ - 1.2, 0],
-      [x, b.maxZ + 1.2, Math.PI],
+      [b.minX - far, z, Math.PI / 2],
+      [b.maxX + far, z, -Math.PI / 2],
+      [x, b.minZ - far, 0],
+      [x, b.maxZ + far, Math.PI],
     ];
     const [sx, sz, heading] = spawn[edge];
     const h = heading + rand(-0.4, 0.4);
     this.body.teleport(sx, sz, h);
-    this.target.set(sx + Math.sin(h) * 2.5, sz + Math.cos(h) * 2.5);
+    this.target.set(sx + Math.sin(h) * (far + 1.3), sz + Math.cos(h) * (far + 1.3));
     this.clampInside(this.target);
   }
 }

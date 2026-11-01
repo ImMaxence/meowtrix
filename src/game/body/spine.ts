@@ -81,8 +81,15 @@ export class Spine {
     }
   }
 
-  /** Builds the 3D frames: chain + sideways offset + height, both given per point. */
-  compose(offset: (s: number, j: number) => number, height: (s: number, j: number) => number): void {
+  /**
+   * Builds the 3D frames: chain + sideways offset + height, both given per point, and an optional
+   * shift back along the body (so a body rearing up gets shorter on the ground instead of stretching).
+   */
+  compose(
+    offset: (s: number, j: number) => number,
+    height: (s: number, j: number) => number,
+    back?: (s: number, j: number) => number,
+  ): void {
     const n = this.count;
     for (let j = 0; j < n; j++) {
       const a = this.chain[Math.max(j - 1, 0)], b = this.chain[Math.min(j + 1, n - 1)];
@@ -92,7 +99,8 @@ export class Spine {
       tz /= len;
       const s = j / (n - 1);
       const off = offset(s, j);
-      this.frames[j].pos.set(this.chain[j].x + tz * off, height(s, j), this.chain[j].y - tx * off);
+      const shift = back ? back(s, j) : 0;
+      this.frames[j].pos.set(this.chain[j].x + tz * off - tx * shift, height(s, j), this.chain[j].y - tx * off - tz * shift);
     }
     for (let j = 0; j < n; j++) {
       const f = this.frames[j];

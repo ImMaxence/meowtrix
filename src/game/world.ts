@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { makeGroundTexture, type GroundTheme } from './ground';
+import { groundRoughness, makeGroundTexture, WATER_TINT, type GroundTheme, type WaterGround } from './ground';
+import { Water } from './water';
 
 export type ViewSize = 'small' | 'medium' | 'large';
 
@@ -33,6 +34,9 @@ export class World {
   private readonly ndc = new THREE.Vector2();
   private viewShort = VIEW_SHORT.medium;
   private maxPixelRatio = 2;
+  /** Created the first time the water theme is shown. */
+  private water: Water | null = null;
+  private ground: GroundTheme = 'stone';
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -77,7 +81,37 @@ export class World {
     tex.repeat.setScalar(GROUND_SIZE / TILE);
     this.groundMat.map?.dispose();
     this.groundMat.map = tex;
+    this.groundMat.roughness = groundRoughness(theme);
     this.groundMat.needsUpdate = true;
+    this.ground = theme;
+    this.tintWater();
+  }
+
+  /** Shows or hides the water (surface, caustics, ripples) of the water theme. */
+  setWater(on: boolean): void {
+    if (on && !this.water) {
+      this.water = new Water();
+      this.scene.add(this.water.group);
+      this.tintWater();
+    }
+    if (this.water) this.water.group.visible = on;
+  }
+
+  private tintWater(): void {
+    if (this.ground in WATER_TINT) this.water?.setTint(WATER_TINT[this.ground as WaterGround]);
+  }
+
+  get underwater(): boolean {
+    return !!this.water?.group.visible;
+  }
+
+  /** Rings on the water surface at (x, z). */
+  ripple(x: number, z: number, size = 1): void {
+    if (this.underwater) this.water!.ripple(x, z, size);
+  }
+
+  update(dt: number): void {
+    this.water?.update(dt);
   }
 
   setViewSize(size: ViewSize): void {

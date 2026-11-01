@@ -46,3 +46,15 @@ export function fbm2p(x: number, y: number, period: number, octaves: number, see
   }
   return sum / norm;
 }
+
+/** 2D value noise that tiles every `px` cells along x and `py` cells along y (stretched grain). */
+export function noise2pp(x: number, y: number, px: number, py: number, seed = 0): number {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const u = fade(x - xi), v = fade(y - yi);
+  const mx = (n: number) => ((n % px) + px) % px;
+  const my = (n: number) => ((n % py) + py) % py;
+  const c = (dx: number, dy: number) => hash3(mx(xi + dx), my(yi + dy), 0, seed);
+  const a = c(0, 0) + (c(1, 0) - c(0, 0)) * u;
+  const b = c(0, 1) + (c(1, 1) - c(0, 1)) * u;
+  return a + (b - a) * v;
+}

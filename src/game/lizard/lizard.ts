@@ -4,15 +4,10 @@ import { makeFrame, Spine } from '../body/spine';
 import { Tube } from '../body/tube';
 import { GroundCreature, type Locomotion, type SampleFn } from '../creature';
 import { damp, rand, smoothstep, TAU } from '../math';
-import { BELLY, S_EYE, S_HIP, S_SHOULDER, halfHeight, halfWidth } from './profile';
+import { BELLY, type LizardBuild } from './profile';
 import { limbBump, skinTextures, type SkinPreset } from './skin';
 
-/** Simulated spine points from snout (0) to tail tip. */
-const SPINE = 64;
-/** The neck point is the one driven by locomotion; points before it form the rigid head. */
-const NECK = 8;
-/** Rendered cross-sections and vertices per cross-section. */
-const RINGS = 96;
+/** Vertices per rendered cross-section. */
 const SIDES = 20;
 /** Fraction of a gait cycle each foot spends in the air. */
 const SWING = 0.4;
@@ -35,15 +30,18 @@ interface LegDef {
   forward: number;
 }
 
-const FRONT = { s: S_SHOULDER, front: true, upper: 0.065, lower: 0.08, span: 0.085, forward: 0.035 } as const;
-const HIND = { s: S_HIP, front: false, upper: 0.075, lower: 0.085, span: 0.095, forward: -0.02 } as const;
-
-const LEG_DEFS: LegDef[] = [
-  { ...FRONT, side: 1, phase: 0 },
-  { ...FRONT, side: -1, phase: 0.5 },
-  { ...HIND, side: 1, phase: 0.5 },
-  { ...HIND, side: -1, phase: 0 },
-];
+/** Legs of a lizard built like `b`: the standard leg sizes, scaled with the body. */
+function legDefs(b: LizardBuild): LegDef[] {
+  const k = b.scale;
+  const front = { s: b.sShoulder, front: true, upper: 0.065 * k, lower: 0.08 * k, span: 0.085 * k, forward: 0.035 * k };
+  const hind = { s: b.sHip, front: false, upper: 0.075 * k, lower: 0.085 * k, span: 0.095 * k, forward: -0.02 * k };
+  return [
+    { ...front, side: 1, phase: 0 },
+    { ...front, side: -1, phase: 0.5 },
+    { ...hind, side: 1, phase: 0.5 },
+    { ...hind, side: -1, phase: 0 },
+  ];
+}
 
 interface Leg {
   def: LegDef;
@@ -62,8 +60,8 @@ interface Leg {
  * Lateral bending of the trunk: a standing wave with nodes at the shoulders and hips,
  * carried smoothly into the neck and the tail base.
  */
-function trunkShape(s: number): number {
-  const u = (s - S_SHOULDER) / (S_HIP - S_SHOULDER);
+function trunkShape(s: number, b: LizardBuild): number {
+  const u = (s - b.sShoulder) / (b.sHip - b.sShoulder);
   if (u < 0) return Math.PI * u * Math.exp(2 * u);
   if (u <= 1) return Math.sin(Math.PI * u);
   const v = u - 1;
@@ -111,7 +109,7 @@ function buildPaw(mat: THREE.Material, front: boolean, side: number): THREE.Grou
  * the trunk and tail follow the neck's path, and the legs step on their own with IK.
  */
 export class Lizard extends GroundCreature {
-  protected readonly spine = new Spine(SPINE, NECK, 1, (s) => (s < S_HIP ? 0.05 : 0.15), 0.45);
+  protected readonly spine: Spine;
 
   private walkLift = 0;
   private bendAmp = 0;
@@ -142,15 +140,17 @@ export class Lizard extends GroundCreature {
   private readonly tongueFork = new THREE.Group();
   private readonly legs: Leg[];
 
-  constructor(skin: SkinPreset, private readonly anisotropy: number) {
+  constructor(skin: SkinPreset, private readonly anisotropy: number, private readonly build: LizardBuild) {
     super();
+    const b = build, k = b.scale;
+    this.spine = new Spine(b.spine, b.neck, b.length, (s) => (s < b.sHip ? 0.05 : 0.15), 0.45);
     this.bodyMat = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0, bumpScale: 1.2 });
     this.limbMat = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0, bumpMap: limbBump(), bumpScale: 0.6 });
     this.eyeMat = new THREE.MeshPhysicalMaterial({ roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 });
 
     // Rings are denser near the head, where the shape changes fastest.
-    const ringS = Array.from({ length: RINGS }, (_, r) => {
-      const t = r / (RINGS - 1);
+    const ringS = Array.from({ length: b.rings }, (_, r) => {
+      const t = r / (b.rings - 1);
       return 0.45 * t + 0.55 * t * t;
     });
     this.tube = new Tube(ringS, SIDES);
@@ -159,9 +159,9 @@ export class Lizard extends GroundCreature {
     body.frustumCulled = false;
     this.group.add(body);
 
-    this.legs = LEG_DEFS.map((def) => {
-      const rUpper = def.front ? [0.013, 0.009] : [0.017, 0.011];
-      const rLower = def.front ? [0.009, 0.006] : [0.01, 0.007];
+    this.legs = legDefs(b).map((def) => {
+      const rUpper = (def.front ? [0.013, 0.009] : [0.017, 0.011]).map((r) => r * k);
+      const rLower = (def.front ? [0.009, 0.006] : [0.01, 0.007]).map((r) => r * k);
       const upper = new THREE.Mesh(new THREE.CylinderGeometry(rUpper[1], rUpper[0], 1, 12, 1, true), this.limbMat);
       const lower = new THREE.Mesh(new THREE.CylinderGeometry(rLower[1], rLower[0], 1, 12, 1, true), this.limbMat);
       const root = new THREE.Mesh(JOINT_GEO, this.limbMat);
@@ -169,6 +169,7 @@ export class Lizard extends GroundCreature {
       const knee = new THREE.Mesh(JOINT_GEO, this.limbMat);
       knee.scale.setScalar(rUpper[1]);
       const paw = buildPaw(this.limbMat, def.front, def.side);
+      paw.scale.setScalar(k);
       for (const m of [upper, lower, root, knee]) {
         m.castShadow = true;
         m.frustumCulled = false;
@@ -200,7 +201,7 @@ export class Lizard extends GroundCreature {
   }
 
   setSkin(skin: SkinPreset): void {
-    const { map, bump } = skinTextures(skin, this.anisotropy);
+    const { map, bump } = skinTextures(skin, this.build, this.anisotropy);
     this.bodyMat.map = map;
     this.bodyMat.bumpMap = bump;
     this.bodyMat.needsUpdate = true;
@@ -226,11 +227,11 @@ export class Lizard extends GroundCreature {
   }
 
   forEachSample(fn: SampleFn): void {
-    const n = this.spine.count;
+    const n = this.spine.count, b = this.build;
     for (let j = 0; j < n; j += 2) {
       const s = j / (n - 1);
       const p = this.spine.frames[j].pos;
-      fn(p.x, p.z, halfWidth(s), p.y + halfHeight(s) * (1 + BELLY));
+      fn(p.x, p.z, b.halfWidth(s), p.y + b.halfHeight(s) * (1 + BELLY));
     }
     for (const leg of this.legs) fn(leg.knee.position.x, leg.knee.position.z, 0.016, leg.knee.position.y + 0.012);
   }
@@ -246,7 +247,7 @@ export class Lizard extends GroundCreature {
   }
 
   protected halfWidthAt(s: number): number {
-    return halfWidth(s);
+    return this.build.halfWidth(s);
   }
 
   update(dt: number): void {
@@ -257,10 +258,11 @@ export class Lizard extends GroundCreature {
     this.advanceGait(dt);
     this.composeSpine();
     const breath = 0.03 * Math.sin(this.breathPhase);
+    const b = this.build, chest = b.sShoulder, belly = b.sHip;
     this.tube.update(
       this.spine,
-      (s) => halfWidth(s) * (1 + breath * smoothstep(0.15, 0.22, s) * smoothstep(0.42, 0.32, s)),
-      halfHeight,
+      (s) => b.halfWidth(s) * (1 + breath * smoothstep(chest - 0.02, chest + 0.05, s) * smoothstep(belly + 0.02, belly - 0.08, s)),
+      b.halfHeight,
       BELLY,
     );
     this.updateLegs();
@@ -314,7 +316,7 @@ export class Lizard extends GroundCreature {
 
   private advanceGait(dt: number): void {
     const moveRate = this.speed + Math.abs(this.turnRate) * 0.1;
-    this.stride = Math.min(0.2 + 0.03 * this.speed, 0.28);
+    this.stride = Math.min(0.2 + 0.03 * this.speed, 0.28) * this.build.scale;
     if (moveRate > 0.05) {
       // Capped so a slow frame can never skip a whole swing.
       this.phase += Math.min(0.3, (dt * moveRate) / this.stride);
@@ -324,27 +326,28 @@ export class Lizard extends GroundCreature {
       this.phase = Math.min(rest, this.phase + dt * 3.5);
     }
     this.phase %= 1;
-    this.footArc = 0.022 + 0.014 * Math.min(this.speed / 3, 1);
+    this.footArc = (0.022 + 0.014 * Math.min(this.speed / 3, 1)) * this.build.scale;
   }
 
   /** Undulation, tail motion and posture on top of the simulated chain. */
   private composeSpine(): void {
+    const b = this.build, k = b.scale, L = b.length;
     const wave = Math.sin(TAU * (this.phase - 0.15));
     const tailAmp = this.bendAmp * 1.3;
-    const clearance = 0.003 + this.walkLift * 0.012;
-    const front = this.frontLift * 0.045;
+    const clearance = (0.003 + this.walkLift * 0.012) * k;
+    const front = this.frontLift * 0.045 * k;
     const pitch = Math.sin(this.pitch);
-    const seg = this.spine.seg;
+    const seg = this.spine.seg, neck = b.neck;
 
     this.spine.compose(
       (s) =>
-        this.bendAmp * wave * trunkShape(s) +
-        tailAmp * Math.sin(TAU * this.phase - 7 * (s - S_HIP)) * smoothstep(S_HIP, 0.75, s) +
-        this.tailTwitch * 0.03 * Math.sin(this.time * 16 - s * 12) * smoothstep(0.75, 1, s),
+        this.bendAmp * k * wave * trunkShape(s, b) +
+        tailAmp * Math.sin(TAU * this.phase - 7 * (s - b.sHip) * L) * smoothstep(b.sHip, 0.75, s) +
+        this.tailTwitch * 0.03 * Math.sin(this.time * 16 - s * 12 * L) * smoothstep(0.75, 1, s),
       (s, j) =>
         clearance * smoothstep(0.9, 0.5, s) +
-        front * smoothstep(S_HIP, S_SHOULDER - 0.03, s) +
-        (j < NECK ? (NECK - j) * seg * pitch : 0),
+        front * smoothstep(b.sHip, b.sShoulder - 0.03 / L, s) +
+        (j < neck ? (neck - j) * seg * pitch : 0),
     );
   }
 
@@ -353,7 +356,7 @@ export class Lizard extends GroundCreature {
     for (const leg of this.legs) {
       const def = leg.def;
       const f = this.spine.sample(def.s, this.frame);
-      const w = halfWidth(def.s), h = halfHeight(def.s);
+      const w = this.build.halfWidth(def.s), h = this.build.halfHeight(def.s);
       const n = Math.hypot(f.tan.x, f.tan.z) || 1;
       const fx = f.tan.x / n, fz = f.tan.z / n;
       const sx = fz * def.side, sz = -fx * def.side;
@@ -387,7 +390,7 @@ export class Lizard extends GroundCreature {
         leg.foot.copy(home);
       }
 
-      ankle.set(leg.foot.x, leg.foot.y + 0.006, leg.foot.z);
+      ankle.set(leg.foot.x, leg.foot.y + 0.006 * this.build.scale, leg.foot.z);
       // Sprawling posture: elbows point back and up, knees forward and up.
       pole.set(sx, 0.9, sz).addScaledVector(tmpA.set(fx, 0, fz), def.front ? -0.5 : 0.5);
       solveTwoBone(anchor, ankle, def.upper, def.lower, pole, joint, end);
@@ -395,15 +398,17 @@ export class Lizard extends GroundCreature {
       placeSegment(leg.lower, joint, end);
       leg.root.position.copy(anchor);
       leg.knee.position.copy(joint);
-      leg.paw.position.set(end.x, end.y - 0.006, end.z);
+      leg.paw.position.set(end.x, end.y - 0.006 * this.build.scale, end.z);
       leg.paw.rotation.y = Math.atan2(fx, fz) + def.side * (def.front ? 0.5 : 1.15);
     }
     this.resetFeet = false;
   }
 
   private updateHead(): void {
-    const f = this.spine.sample(S_EYE, this.frame);
-    const w = halfWidth(S_EYE), h = halfHeight(S_EYE);
+    const b = this.build;
+    const f = this.spine.sample(b.sEye, this.frame);
+    const w = b.halfWidth(b.sEye), h = b.halfHeight(b.sEye);
+    const r = EYE_RADIUS * b.scale;
     tmpQ.setFromRotationMatrix(tmpM.makeBasis(f.side, f.up, f.tan));
     this.eyes.forEach((eye, i) => {
       const side = i === 0 ? 1 : -1;
@@ -411,7 +416,7 @@ export class Lizard extends GroundCreature {
         .addScaledVector(f.side, side * w * 0.72)
         .addScaledVector(f.up, h * 0.45);
       eye.quaternion.copy(tmpQ);
-      eye.scale.set(EYE_RADIUS, EYE_RADIUS * Math.max(0.08, this.eyeOpen), EYE_RADIUS);
+      eye.scale.set(r, r * Math.max(0.08, this.eyeOpen), r);
     });
 
     this.tongue.visible = this.tongueExt > 0.001;
@@ -422,7 +427,8 @@ export class Lizard extends GroundCreature {
     const x = tmpB.copy(tip.side).addScaledVector(dir, -tip.side.dot(dir)).normalize();
     const z = tmpC.crossVectors(x, dir);
     this.tongue.quaternion.setFromRotationMatrix(tmpM.makeBasis(x, dir, z));
-    this.tongue.position.set(tip.pos.x, tip.pos.y + halfHeight(0.01) * BELLY * 0.5, tip.pos.z);
+    this.tongue.position.set(tip.pos.x, tip.pos.y + b.halfHeight(0.01) * BELLY * 0.5, tip.pos.z);
+    this.tongue.scale.setScalar(b.scale);
     const len = this.tongueExt * 0.075;
     this.tongueShaft.scale.set(1, len, 1);
     this.tongueShaft.position.y = len / 2;
