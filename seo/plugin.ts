@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 import { langInfo, type Lang } from '../src/langs.ts';
@@ -107,6 +108,30 @@ export function renderPage(template: string, page: Page, version: string): strin
   return html;
 }
 
+const sha256 = (s: string): string => `'sha256-${createHash('sha256').update(s, 'utf8').digest('base64')}'`;
+
+/**
+ * Only the page's own files, and the inline script and style it was built with (by their hash):
+ * an injected script wouldn't run. Framing is refused by nginx.conf, which a <meta> can't do.
+ */
+export function withCsp(html: string): string {
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => sha256(m[1]));
+  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => sha256(m[1]));
+  const csp = [
+    "default-src 'self'",
+    ["script-src 'self'", ...scripts].join(' '),
+    ["style-src 'self'", ...styles].join(' '),
+    "img-src 'self' data: blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'none'",
+  ].join('; ');
+  const charset = '<meta charset="utf-8" />';
+  if (!html.includes(charset)) throw new Error('withCsp: <meta charset="utf-8" /> not found');
+  // Right after the charset: a policy only covers what comes after it.
+  return html.replace(charset, `${charset}\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`);
+}
+
 function sitemap(date: string): string {
   const urls = PAGES.map((page) => `  <url>
     <loc>${SITE}${page.path}</loc>
@@ -164,12 +189,12 @@ export function seoPages(version: string): Plugin {
         delete bundle[css.fileName];
       }
       for (const page of PAGES) {
-        const html = renderPage(template, page, version);
+        const html = withCsp(renderPage(template, page, version));
         if (page.path === '/') index.source = html;
         else this.emitFile({ type: 'asset', fileName: `${page.path.slice(1)}index.html`, source: html });
         this.emitFile({ type: 'asset', fileName: `${page.path.slice(1)}index.md`, source: pageMarkdown(page) });
       }
-      this.emitFile({ type: 'asset', fileName: 'changelog/index.html', source: changelogPage() });
+      this.emitFile({ type: 'asset', fileName: 'changelog/index.html', source: withCsp(changelogPage()) });
       this.emitFile({ type: 'asset', fileName: 'changelog/index.md', source: changelogMarkdown() });
       this.emitFile({ type: 'asset', fileName: 'llms-full.txt', source: llmsFull(version) });
       this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap(new Date().toISOString().slice(0, 10)) });

@@ -7,6 +7,28 @@ Sur le site, la page [/changelog/](https://meowtrix.mbonnici.fr/changelog/) raco
 anglais, pour les joueurs ; elle est écrite à partir de `seo/changelog.ts`. À chaque nouvelle version,
 on complète les deux : le build refuse un numéro de version sans entrée dans `seo/changelog.ts`.
 
+## 0.10.1 — 2 novembre 2026
+
+Sécurité, après un audit du projet : en-têtes de protection, et plus aucune vulnérabilité signalée
+par `npm audit`. Rien ne change pour le chat.
+
+### Ajouté
+
+- **Content-Security-Policy** dans chaque page, `/changelog/` compris (`withCsp` dans
+  `seo/plugin.ts`, au build seulement) : uniquement les fichiers du site, plus le script et le style
+  inline par leur empreinte sha256 — pas de `'unsafe-inline'`, et les empreintes suivent la CSS à
+  chaque build. Un service externe (analytics, police, CDN), un attribut `style="…"`, un gestionnaire
+  `on…=` ou un `<script>` avec attributs seraient bloqués : adapter `withCsp`.
+- **nginx** : `frame-ancestors 'self'` et `X-Frame-Options: SAMEORIGIN` (aucun autre site ne peut
+  afficher Meowtrix dans une iframe ; une `<meta>` ne sait pas le dire), et `Strict-Transport-Security`
+  (1 an, ignoré en HTTP, donc sans effet sur le Docker local).
+
+### Corrigé
+
+- **`npm audit` : 0 vulnérabilité** (5 modérées avant : `glob` et `minimatch` sous `lighthouse` →
+  `@sentry/node`, en développement seulement, rien dans le site publié). `overrides` force `glob`
+  14.0.3 dans `package.json` ; à retirer quand lighthouse sera corrigé.
+
 ## 0.10.0 — 2 novembre 2026
 
 Plus léger au chargement (Lighthouse 92 / 100 / 100 / 100), des visiteurs qui volent, un oiseau

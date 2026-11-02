@@ -20,6 +20,15 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '0.10.1',
+    date: '2026-11-02',
+    summary: 'Safer pages, with nothing new for the cat to notice.',
+    improved: [
+      '<strong>Safer pages.</strong> Each page now tells the browser to run only Meowtrix’s own code, other sites can no longer show Meowtrix inside theirs, and the connection always stays encrypted.',
+      'The tools used to build and test the game are up to date.',
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-11-02',
     summary: 'Lighter to open, visitors that fly, a bird passing over, and a sound for each catch.',
