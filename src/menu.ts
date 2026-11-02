@@ -1,6 +1,7 @@
 import { COVERS, FETE_ICON, FETES, GROUNDS, SPECIES, THEMES, type Fete, type SpeciesInfo, type Theme } from './catalog';
 import { groundPreview } from './game/ground';
-import { t, type Key, type Lang } from './i18n';
+import { t, type Key } from './i18n';
+import { LangPicker } from './lang-picker';
 import { CAT_NAME_MAX, SESSION_LENGTHS, STYLES, themeTotal, type Settings } from './settings';
 
 export type Tab = 'animals' | 'scene' | 'game' | 'about';
@@ -57,12 +58,13 @@ function button(className: string, focus: string, onClick: () => void, text = ''
   return b;
 }
 
-/** The options panel: language toggle, land/water switch, tabs and the active tab's controls. */
+/** The options panel: language list, land/water switch, tabs and the active tab's controls. */
 export class Menu {
   private tab: Tab = 'animals';
   /** The reset button asks for a second tap before wiping everything. */
   private confirmReset = false;
   private confirmTimer = 0;
+  private langPicker: LangPicker | null = null;
 
   constructor(private readonly els: Elements, private readonly s: Settings, private readonly h: MenuHandlers) {
     try {
@@ -71,6 +73,8 @@ export class Menu {
     } catch {
       // Storage blocked: start on the first tab.
     }
+    // A turned phone or a resized window may make the labels fit, or not.
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => this.fit()).observe(els.root);
   }
 
   render(): void {
@@ -84,7 +88,22 @@ export class Menu {
     this.els.about.hidden = !about;
     this.els.panel.hidden = about;
     if (!about) this.els.panel.replaceChildren(...this.content());
+    this.fit();
     if (focused) this.els.root.querySelector<HTMLElement>(`[data-focus="${focused}"]`)?.focus();
+  }
+
+  /**
+   * Some languages' labels are too long for their row: the row gets tighter, one step at a time,
+   * until it fits (see .tight and .tighter in the CSS).
+   */
+  private fit(): void {
+    for (const row of [this.els.themes, this.els.fetes, this.els.tabs]) {
+      row.classList.remove('tight', 'tighter');
+      for (const step of ['tight', 'tighter']) {
+        if (row.scrollWidth <= row.clientWidth) break;
+        row.classList.add(step);
+      }
+    }
   }
 
   private select(tab: Tab): void {
@@ -98,19 +117,13 @@ export class Menu {
     this.els.panel.scrollTop = this.els.about.scrollTop = 0;
   }
 
+  /** The language menu, built once so that it stays open while the rest is redrawn. */
   private renderLang(): void {
-    const group = this.els.lang;
-    group.setAttribute('role', 'group');
-    group.setAttribute('aria-label', t('language'));
-    group.replaceChildren(
-      ...(['fr', 'en'] as Lang[]).map((l) => {
-        const b = button('lang-btn', `lang-${l}`, () => this.h.change('lang', l), l.toUpperCase());
-        b.setAttribute('aria-pressed', String(this.s.lang === l));
-        b.lang = l;
-        b.title = l === 'fr' ? 'Français' : 'English';
-        return b;
-      }),
-    );
+    if (!this.langPicker) {
+      this.langPicker = new LangPicker((lang) => this.h.change('lang', lang));
+      this.els.lang.replaceChildren(this.langPicker.root);
+    }
+    this.langPicker.update(this.s.lang);
   }
 
   private renderThemes(): void {

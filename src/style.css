@@ -130,31 +130,227 @@ button:focus-visible {
   font-size: 0.95rem;
 }
 
+/* --- Language menu (src/lang-picker.ts) ------------------------------------- */
+
 .lang {
-  display: flex;
+  /* Above the rows below it when open. */
+  position: relative;
+  z-index: 10;
   flex: none;
-  padding: 3px;
+  max-width: 48%;
+}
+
+.lang-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lang-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  min-height: 38px;
+  padding-block: 0;
+  padding-inline: 11px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.lang-btn {
-  min-width: 40px;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
+.lang-button:hover,
+.lang-button[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lang-globe {
+  color: var(--accent);
+}
+
+.lang-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lang-chevron {
+  width: 14px;
+  height: 14px;
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  transition: transform 0.2s ease;
 }
 
-.lang-btn[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
+.lang-button[aria-expanded='true'] .lang-chevron {
+  transform: rotate(180deg);
+}
+
+.lang-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(290px, calc(100vw - 40px));
+  /* The panel clips what overflows it: stay within it, even on a short screen. */
+  max-height: min(430px, calc(100vh - 150px));
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(20, 28, 24, 0.97);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transform-origin: top right;
+  animation: lang-in 0.16s ease-out;
+}
+
+[dir='rtl'] .lang-popup {
+  transform-origin: top left;
+}
+
+.lang-popup:focus {
+  outline: none;
+}
+
+@keyframes lang-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.lang-search {
+  position: relative;
+  flex: none;
+}
+
+.lang-magnifier {
+  position: absolute;
+  inset-inline-start: 11px;
+  top: 50%;
+  margin-top: -8px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.lang-input {
+  width: 100%;
+  min-height: 40px;
+  padding-block: 0;
+  padding-inline: 36px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lang-input::placeholder {
+  color: var(--muted);
+}
+
+.lang-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lang-list {
+  /* The offset parent of the options, to scroll to the current one. */
+  position: relative;
+  display: grid;
+  /* As wide as the popup, whatever the names: the long ones give way (see .lang-local). */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+}
+
+.lang-option:hover {
+  background: var(--card-hi);
+}
+
+.lang-option:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  background: var(--card-hi);
+}
+
+.lang-option[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* The language's own name stays whole; its name in the current language gives way if needed. */
+.lang-native {
+  flex: 1 0 auto;
+  white-space: nowrap;
+}
+
+.lang-local {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A check mark on the current language. */
+.lang-option[aria-selected='true']::after {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 6px;
+  margin-inline-start: 2px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: translateY(-2px) rotate(-45deg);
+}
+
+.lang-empty {
+  margin: 0;
+  padding: 14px 10px;
+  color: var(--muted);
+  text-align: center;
 }
 
 /* --- Land / water ------------------------------------------------------- */
@@ -277,6 +473,35 @@ button:focus-visible {
 }
 
 /* --- Tabs --------------------------------------------------------------- */
+
+/* Chinese, Japanese and Korean words have no spaces to wrap at: keep each label whole, like a word. */
+:is(:lang(ja), :lang(zh), :lang(ko)) :is(.theme, .fete, .tab) {
+  word-break: keep-all;
+}
+
+/* A row whose labels don't fit (long words in some languages, see Menu.fit): icons above the
+   labels and less padding, then smaller text, and only then a word may break. */
+.tight > :is(.theme, .tab) {
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 4px;
+}
+
+.tight > .tab {
+  font-size: 0.78rem;
+}
+
+.tight > .fete {
+  gap: 4px;
+  padding-inline: 6px;
+  font-size: 0.82rem;
+}
+
+.tighter > * {
+  min-width: 0;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
 
 .tabs {
   display: flex;
@@ -522,7 +747,7 @@ button:focus-visible {
 }
 
 .chip-icon {
-  margin-right: 6px;
+  margin-inline-end: 6px;
 }
 
 .opt-help {
@@ -649,7 +874,7 @@ button:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--card);
-  text-align: left;
+  text-align: start;
 }
 
 .switch-text {
@@ -755,7 +980,7 @@ button:focus-visible {
 
 .about ul,
 .about ol {
-  padding-left: 1.2em;
+  padding-inline-start: 1.2em;
 }
 
 .about li {
@@ -764,11 +989,6 @@ button:focus-visible {
 
 .about a {
   color: var(--accent);
-}
-
-.about-alt {
-  text-align: right;
-  font-size: 0.8rem;
 }
 
 .faq {
@@ -835,12 +1055,12 @@ button:focus-visible {
   color: var(--muted);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  text-align: left;
+  text-align: start;
 }
 
 .share {
   flex: none;
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: 6px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -938,11 +1158,21 @@ button:focus-visible {
   color: var(--text);
 }
 
+/* Leads to /changelog/: quiet until pointed at. */
 .version {
   color: var(--muted);
   font-size: 0.7rem;
   opacity: 0.6;
   font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.version:hover {
+  color: var(--accent);
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .report-link {

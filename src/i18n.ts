@@ -1,5 +1,8 @@
-export type Lang = 'fr' | 'en';
+import { langInfo, matchLang, type Lang } from './langs';
 
+export type { Lang };
+
+// French and English ship with the app; every other language is in src/locales/ and loaded when chosen.
 const fr = {
   tagline: 'Un terrain de chasse pour votre chat',
   play: 'Jouer',
@@ -225,7 +228,7 @@ const fr = {
   summaryTreat: 'Une friandise pour finir la chasse en beauté ? 🐟',
 };
 
-type Dict = Record<keyof typeof fr, string>;
+export type Dict = Record<keyof typeof fr, string>;
 
 const en: Dict = {
   tagline: 'A hunting ground for your cat',
@@ -454,26 +457,40 @@ const en: Dict = {
 
 export type Key = keyof Dict;
 
-const DICTS: Record<Lang, Dict> = { fr, en };
+const LOADERS = import.meta.glob<Dict>('./locales/*.ts', { import: 'default' });
+const DICTS: Partial<Record<Lang, Dict>> = { fr, en };
 let current: Lang = 'fr';
 
-export const t = (key: Key): string => DICTS[current][key];
+export const t = (key: Key): string => (DICTS[current] ?? en)[key];
 
 /** A text with its {placeholders} filled in. */
 export const tf = (key: Key, vars: Record<string, string | number>): string =>
   t(key).replace(/\{(\w+)\}/g, (m, name: string) => (name in vars ? String(vars[name]) : m));
 
-/** "1 prise", "3 prises": French counts 0 and 1 as singular, English only 1. */
-export const plural = (n: number, one: Key, many: Key): string => tf((current === 'fr' ? n < 2 : n === 1) ? one : many, { n });
+/** "1 prise", "3 prises": the language's own rule (French counts 0 as singular, English doesn't). */
+export const plural = (n: number, one: Key, many: Key): string =>
+  tf(new Intl.PluralRules(current).select(n) === 'one' ? one : many, { n });
 
 export const currentLang = (): Lang => current;
 
-export const detectLang = (): Lang => (navigator.language?.toLowerCase().startsWith('fr') ? 'fr' : 'en');
+export const detectLang = (): Lang => {
+  for (const tag of navigator.languages ?? [navigator.language]) {
+    const lang = tag && matchLang(tag);
+    if (lang) return lang;
+  }
+  return 'en';
+};
 
-/** Switches language and re-translates every [data-i18n] / [data-i18n-aria] element. */
-export function setLang(lang: Lang): void {
-  current = lang;
-  document.documentElement.lang = lang;
+/** Switches language (loading it first if needed) and re-translates every [data-i18n] / [data-i18n-aria] element. */
+export async function setLang(lang: Lang): Promise<void> {
+  try {
+    DICTS[lang] ??= await LOADERS[`./locales/${lang}.ts`]?.();
+  } catch {
+    // Offline before this language was ever loaded: English until it can be.
+  }
+  current = DICTS[lang] ? lang : 'en';
+  document.documentElement.lang = current;
+  document.documentElement.dir = langInfo(current).rtl ? 'rtl' : 'ltr';
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
     el.textContent = t(el.dataset.i18n as Key);
   });

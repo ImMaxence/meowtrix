@@ -2,7 +2,8 @@ import { ALL_SPECIES, COVERS, FETE_CHOICES, GROUNDS, SPECIES, THEMES, type Anima
 import type { CoverKind } from './game/covers';
 import type { GroundTheme } from './game/ground';
 import type { RenderStyle, ViewSize } from './game/world';
-import { detectLang, type Lang } from './i18n';
+import { detectLang } from './i18n';
+import { LANG_CODES, type Lang } from './langs';
 
 export type Speed = 'slow' | 'normal' | 'fast';
 
@@ -66,7 +67,7 @@ function fromSaved(saved: Saved): Settings {
   const legacyCovers: Record<string, CoverKind[]> = { none: [], leaves: ['leaf'], stones: ['stone'], both: ['leaf', 'stone'] };
 
   const s = {
-    lang: oneOf(saved.lang, ['fr', 'en'] as const, detectLang()),
+    lang: oneOf(saved.lang, LANG_CODES, detectLang()),
     theme: oneOf(saved.theme, THEMES, 'land'),
     // Before the automatic fête (0.5), 'none' was only the default: let those follow the calendar too.
     fete: saved.fete === 'none' && !('session' in saved) ? 'auto' : oneOf(saved.fete, FETE_CHOICES, 'auto'),

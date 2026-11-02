@@ -9,6 +9,7 @@ import { Game } from './game/game';
 import { PointerInput } from './game/input';
 import { World } from './game/world';
 import { currentLang, plural, setLang, t, tf } from './i18n';
+import { langHome } from './langs';
 import { Menu } from './menu';
 import { applyPreset, presetQuery } from './preset';
 import { Session } from './session';
@@ -37,7 +38,6 @@ const fromPage = applyPreset(settings, document.documentElement.dataset.preset ?
 const fromLink = applyPreset(settings, location.search);
 if (fromPage || fromLink) saveSettings(settings);
 if (fromLink) history.replaceState(null, '', location.pathname + location.hash);
-setLang(settings.lang);
 registerServiceWorker();
 $('#version').textContent = `Meowtrix v${__APP_VERSION__}`;
 $<HTMLAnchorElement>('#github').href = REPO;
@@ -64,8 +64,11 @@ function createWorld(): World | null {
   }
 }
 
-const world = createWorld();
-if (world) start(world);
+// The menu is drawn once its language is loaded, so it never flashes in another one.
+void setLang(settings.lang).then(() => {
+  const world = createWorld();
+  if (world) start(world);
+});
 
 function start(world: World): void {
   world.setViewSize(settings.size);
@@ -169,7 +172,10 @@ function start(world: World): void {
       renderSummary();
     }
     if (!rerender) return;
-    if (key === 'lang') setLang(settings.lang);
+    if (key === 'lang') {
+      void setLang(settings.lang).then(refreshMenu);
+      return;
+    }
     if (key === 'theme') applyTheme();
     if (key === 'animals' || key === 'colors') game.setPopulation(settings.animals, settings.colors);
     if (key === 'speed') game.speed = SPEED_FACTOR[settings.speed];
@@ -205,7 +211,7 @@ function start(world: World): void {
       : session.stats.total
         ? tf('shareTotal', { cat, catches: catches(session.stats.total) })
         : t('shareIntro');
-    const url = `${location.origin}${currentLang() === 'en' ? '/en/' : '/'}?${presetQuery(settings)}`;
+    const url = `${location.origin}${langHome(currentLang())}?${presetQuery(settings)}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Meowtrix', text, url });

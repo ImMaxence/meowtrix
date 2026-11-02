@@ -1,5 +1,5 @@
 import { COVERS, FETE_CHOICES, GROUNDS, SPECIES, THEMES } from './catalog';
-import type { Lang } from './i18n';
+import { LANG_CODES, type Lang } from './langs';
 import { STYLES, themeTotal, type Settings } from './settings';
 
 /**
@@ -38,7 +38,7 @@ export function applyPreset(s: Settings, query: string): boolean {
   set('size', pick('size', ['small', 'medium', 'large'] as const));
   set('speed', pick('speed', ['slow', 'normal', 'fast'] as const));
   set('style', pick('style', STYLES));
-  set('lang', pick<Lang>('lang', ['fr', 'en']));
+  set('lang', pick<Lang>('lang', LANG_CODES));
   const ground = pick('ground', GROUNDS[t]);
   if (ground) set('ground', { ...s.ground, [t]: ground });
 

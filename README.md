@@ -61,11 +61,19 @@ bruits de la pièce.
 
 ## Référencement
 
-Le jeu est une seule application, mais le build écrit une page par thème et par fête, en français
-et en anglais (`/`, `/eau/`, `/ciel/`, `/noel/`, `/halloween/`, `/paques/`, et `/en/…`), chacune
-avec son titre, sa description, son image d'aperçu (`public/og/`), son texte (onglet **Infos**, lisible
-sans JavaScript par les moteurs et les assistants IA) et le réglage qu'elle applique. Le texte et
-les métadonnées sont dans `seo/pages.ts` ; `seo/plugin.ts` génère aussi `sitemap.xml` et `llms.txt`.
+Le jeu est une seule application, mais le build écrit une page par thème et par fête dans chacune
+des 44 langues de `src/langs.ts` : le français à la racine (`/`, `/eau/`, `/ciel/`, `/noel/`,
+`/halloween/`, `/paques/`), les autres sous leur code (`/en/water/`, `/de/sky/`, `/pt-br/christmas/`…).
+Chaque page a son titre, sa description, son image d'aperçu (`public/og/`), son texte (onglet
+**Infos**, lisible sans JavaScript par les moteurs et les assistants IA), les liens `hreflang` vers
+ses 43 traductions et le réglage qu'elle applique. Les textes sont dans `seo/locales/<langue>.ts`,
+les pages dans `seo/pages.ts` ; `seo/plugin.ts` génère aussi `sitemap.xml` et `llms.txt`.
+
+L'interface du jeu est traduite dans les mêmes langues : le français et l'anglais sont dans
+`src/i18n.ts`, les autres dans `src/locales/<langue>.ts`, chargées seulement quand on les choisit.
+L'arabe, l'hébreu, le persan et l'ourdou s'affichent de droite à gauche. Pour ajouter une langue :
+une ligne dans `src/langs.ts`, un fichier dans `src/locales/` et un dans `seo/locales/` (le build
+refuse une langue incomplète).
 `public/robots.txt` autorise les moteurs et les robots des assistants IA, et nginx renvoie une vraie
 erreur 404 pour les adresses inconnues.
 
@@ -77,7 +85,11 @@ npm run dev        # http://localhost:5173
 npm run build      # vérifie les types et produit dist/
 ```
 
-La version affichée en bas du menu vient de `package.json`.
+La version affichée en bas du menu vient de `package.json` ; elle mène à la page `/changelog/`, qui
+présente aux joueurs, en anglais, ce que chaque version a apporté (écrite à partir de
+`seo/changelog.ts`). Le détail en français, avec les changements techniques, est dans
+[CHANGELOG.md](CHANGELOG.md). Le build échoue si la version de `package.json` n'a pas son entrée dans
+`seo/changelog.ts`.
 
 ## Docker
 
