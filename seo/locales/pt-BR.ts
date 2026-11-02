@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Nas datas festivas, tudo se fantasia sozinho na época certa: <a href="{christmas}">Natal</a> (gorros e neve), <a href="{halloween}">Halloween</a> (chapéus de bruxa e abóboras) e <a href="{easter}">Páscoa</a> (orelhas de coelho e ovos gigantes). O estilo Pixel dá um ar de videogame retrô.</p>
 <h3>Pensado no bem-estar do gato</h3>
-<p>Um timer oferece sessões de 5, 10 ou 15 minutos; no final, os animais se cansam para o gato terminar com uma captura. Um placar guarda as capturas dele, para compartilhar com os amigos. Os sons são criados ao vivo e, se você permitir, o microfone faz os animais se assustarem com os barulhos do ambiente.</p>`,
+<p>Um timer oferece sessões de 5, 10 ou 15 minutos; no final, os animais se cansam para o gato terminar com uma captura. Um placar guarda as capturas dele, para compartilhar com os amigos. Os sons são criados ao vivo e, se você permitir, o microfone faz os animais se assustarem com os barulhos do ambiente.</p>
+<h3>Um jogo que se adapta ao seu gato</h3>
+<p>A velocidade Auto desacelera os animais quando o gato toca sem pegar, e os acelera quando pega tudo. De vez em quando um animal de passagem cruza a tela, ou uma sombra faz todos fugirem. As lagartas, lentas e fáceis de pegar, servem para filhotes e gatos idosos. As estatísticas guardam as capturas por dia e a presa favorita; o modo “tablet no suporte” começa sozinho uma nova sessão uma, duas ou quatro horas depois, para os dias em que você está fora.</p>`,
     },
     water: {
       name: 'Água',

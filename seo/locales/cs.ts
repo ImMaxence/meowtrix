@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>O svátcích se vše samo převleče ve správnou dobu: <a href="{christmas}">Vánoce</a> (čepice a sníh), <a href="{halloween}">Halloween</a> (čarodějnické klobouky a dýně) a <a href="{easter}">Velikonoce</a> (zaječí uši a obří vajíčka). Styl Pixel dodá vzhled retro videohry.</p>
 <h3>S ohledem na pohodu kočky</h3>
-<p>Časovač nabízí hry na 5, 10 nebo 15 minut; na konci se zvířata unaví, aby kočka skončila úlovkem. Počítadlo uchovává její úlovky, kterými se můžete pochlubit přátelům. Zvuky vznikají naživo a pokud to povolíte, mikrofon způsobí, že se zvířata leknou zvuků v místnosti.</p>`,
+<p>Časovač nabízí hry na 5, 10 nebo 15 minut; na konci se zvířata unaví, aby kočka skončila úlovkem. Počítadlo uchovává její úlovky, kterými se můžete pochlubit přátelům. Zvuky vznikají naživo a pokud to povolíte, mikrofon způsobí, že se zvířata leknou zvuků v místnosti.</p>
+<h3>Hra, která se přizpůsobí vaší kočce</h3>
+<p>Automatická rychlost zpomalí zvířata, když kočka sahá, ale nechytá, a zrychlí je, když chytí všechno. Čas od času přejde přes obrazovku zvíře na návštěvě nebo stín všechny rozežene. Housenky, pomalé a snadné k chycení, se hodí pro koťata a staré kočky. Statistiky uchovávají úlovky po dnech a oblíbenou kořist; režim „tablet ve stojánku“ spustí nové sezení sám o hodinu, dvě nebo čtyři později, pro dny, kdy nejste doma.</p>`,
     },
     water: {
       name: 'Voda',

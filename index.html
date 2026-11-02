@@ -2,7 +2,8 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- Zoom stays allowed for people who need it; the game canvas blocks pinch and double-tap zoom itself (touch-action: none). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- The About text stays readable without JavaScript (search engines, assistants); with it, only in its tab. -->
     <script>document.documentElement.classList.add('js');</script>
     <!-- Title, description, links between languages, previews and structured data: filled per page by seo/plugin.ts. -->
@@ -31,8 +32,8 @@
         </header>
 
         <div id="summary" class="summary" role="status" hidden></div>
-        <nav id="themes" class="themes"></nav>
-        <nav id="tabs" class="tabs"></nav>
+        <div id="themes" class="themes"></div>
+        <div id="tabs" class="tabs"></div>
         <div id="tab-panel" class="tab-panel" role="tabpanel"></div>
         <article id="about" class="tab-panel about" role="tabpanel">
           <!-- seo:about -->

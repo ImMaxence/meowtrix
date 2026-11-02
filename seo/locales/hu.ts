@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Ünnepekkor minden magától öltözik be a megfelelő időben: <a href="{christmas}">karácsony</a> (mikulássapkák és hó), <a href="{halloween}">Halloween</a> (boszorkánykalapok és tökök) és <a href="{easter}">húsvét</a> (nyuszifülek és óriás tojások). A Pixel stílus retró videojáték-hangulatot ad.</p>
 <h3>A macska jóllétére gondolva</h3>
-<p>Az időzítő 5, 10 vagy 15 perces köröket kínál; a végén az állatok elfáradnak, hogy a macska egy zsákmánnyal zárjon. Egy számláló megőrzi a zsákmányait, amelyeket megoszthatsz a barátaiddal. A hangok élőben készülnek, és ha engedélyezed, a mikrofon hatására az állatok összerezzennek a szoba zajaira.</p>`,
+<p>Az időzítő 5, 10 vagy 15 perces köröket kínál; a végén az állatok elfáradnak, hogy a macska egy zsákmánnyal zárjon. Egy számláló megőrzi a zsákmányait, amelyeket megoszthatsz a barátaiddal. A hangok élőben készülnek, és ha engedélyezed, a mikrofon hatására az állatok összerezzennek a szoba zajaira.</p>
+<h3>Egy játék, amely alkalmazkodik a macskádhoz</h3>
+<p>Az automatikus sebesség lelassítja az állatokat, ha a macskád nyúl, de nem fog, és felgyorsítja őket, ha mindent elkap. Időnként egy átutazó állat halad át a képernyőn, vagy egy árnyék kerget el mindenkit. A hernyók, lassúak és könnyen elkaphatók, kiscicáknak és idős macskáknak valók. A statisztika megőrzi a napi fogásokat és a kedvenc zsákmányt; a „tablet állványon” mód egy, két vagy négy óra múlva magától új menetet indít, azokra a napokra, amikor nem vagy otthon.</p>`,
     },
     water: {
       name: 'Víz',

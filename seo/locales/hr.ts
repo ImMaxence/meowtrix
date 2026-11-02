@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Za blagdane se sve samo preodjene u pravo vrijeme: <a href="{christmas}">Božić</a> (kape i snijeg), <a href="{halloween}">Noć vještica</a> (vještičji šeširi i bundeve) i <a href="{easter}">Uskrs</a> (zečje uši i golema jaja). Stil Pikseli daje izgled retro videoigre.</p>
 <h3>Osmišljeno za dobrobit mačke</h3>
-<p>Mjerač vremena nudi igre od 5, 10 ili 15 minuta; na kraju se životinje umore da mačka završi s ulovom. Brojač čuva njezine ulove, da ih podijeliš s prijateljima. Zvukovi nastaju uživo i, ako dopustiš, mikrofon tjera životinje da se trgnu na zvukove u sobi.</p>`,
+<p>Mjerač vremena nudi igre od 5, 10 ili 15 minuta; na kraju se životinje umore da mačka završi s ulovom. Brojač čuva njezine ulove, da ih podijeliš s prijateljima. Zvukovi nastaju uživo i, ako dopustiš, mikrofon tjera životinje da se trgnu na zvukove u sobi.</p>
+<h3>Igra koja se prilagođava vašoj mački</h3>
+<p>Automatska brzina usporava životinje kad mačka dira, a ne hvata, i ubrzava ih kad uhvati sve. S vremena na vrijeme ekranom prođe životinja u prolazu ili sjena sve rastjera. Gusjenice, spore i lake za uloviti, odgovaraju mačićima i starim mačkama. Statistika čuva ulove po danima i omiljeni plijen; način „tablet na stalku“ sam pokreće novu seansu jedan, dva ili četiri sata kasnije, za dane kad niste kod kuće.</p>`,
     },
     water: {
       name: 'Voda',

@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Zu den Feiertagen verkleidet sich alles von selbst zur richtigen Zeit: <a href="{christmas}">Weihnachten</a> (Mützen und Schnee), <a href="{halloween}">Halloween</a> (Hexenhüte und Kürbisse) und <a href="{easter}">Ostern</a> (Hasenohren und Rieseneier). Der Pixel-Stil sorgt für Retro-Videospiel-Optik.</p>
 <h3>Mit Blick auf das Wohl der Katze</h3>
-<p>Ein Timer bietet Runden von 5, 10 oder 15 Minuten; am Ende werden die Tiere müde, damit die Katze mit einem Fang aufhört. Ein Zähler speichert ihre Fänge, zum Teilen mit Freunden. Die Geräusche entstehen live, und wenn du es erlaubst, lässt das Mikrofon die Tiere bei Geräuschen im Raum aufschrecken.</p>`,
+<p>Ein Timer bietet Runden von 5, 10 oder 15 Minuten; am Ende werden die Tiere müde, damit die Katze mit einem Fang aufhört. Ein Zähler speichert ihre Fänge, zum Teilen mit Freunden. Die Geräusche entstehen live, und wenn du es erlaubst, lässt das Mikrofon die Tiere bei Geräuschen im Raum aufschrecken.</p>
+<h3>Ein Spiel, das sich deiner Katze anpasst</h3>
+<p>Die Auto-Geschwindigkeit bremst die Tiere, wenn deine Katze tatzt, ohne zu fangen, und beschleunigt sie, wenn sie alles fängt. Ab und zu läuft ein Besucher über den Bildschirm, oder ein Schatten jagt alle davon. Raupen, langsam und leicht zu fangen, passen zu Kätzchen und alten Katzen. Die Statistik merkt sich die Fänge pro Tag und die Lieblingsbeute; der Modus „Tablet im Ständer“ startet ein, zwei oder vier Stunden später von selbst eine neue Runde, für die Tage, an denen du unterwegs bist.</p>`,
     },
     water: {
       name: 'Wasser',

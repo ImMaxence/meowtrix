@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Na sviatky sa všetko samo prezlečie v pravý čas: <a href="{christmas}">Vianoce</a> (čiapky a sneh), <a href="{halloween}">Halloween</a> (bosorácke klobúky a tekvice) a <a href="{easter}">Veľká noc</a> (zajačie uši a obrie vajíčka). Štýl Pixel dodá vzhľad retro videohry.</p>
 <h3>S ohľadom na pohodu mačky</h3>
-<p>Časovač ponúka hry na 5, 10 alebo 15 minút; na konci sa zvieratá unavia, aby mačka skončila úlovkom. Počítadlo uchováva jej úlovky, ktorými sa môžete pochváliť priateľom. Zvuky vznikajú naživo a ak to povolíte, mikrofón spôsobí, že sa zvieratá zľaknú zvukov v miestnosti.</p>`,
+<p>Časovač ponúka hry na 5, 10 alebo 15 minút; na konci sa zvieratá unavia, aby mačka skončila úlovkom. Počítadlo uchováva jej úlovky, ktorými sa môžete pochváliť priateľom. Zvuky vznikajú naživo a ak to povolíte, mikrofón spôsobí, že sa zvieratá zľaknú zvukov v miestnosti.</p>
+<h3>Hra, ktorá sa prispôsobí vašej mačke</h3>
+<p>Automatická rýchlosť spomalí zvieratá, keď mačka siaha, ale nechytá, a zrýchli ich, keď chytí všetko. Z času na čas prejde cez obrazovku zviera na návšteve alebo tieň všetkých rozoženie. Húsenice, pomalé a ľahko chytiteľné, sa hodia pre mačiatka a staré mačky. Štatistiky uchovávajú úlovky podľa dní a obľúbenú korisť; režim „tablet v stojane“ spustí nové sedenie sám o hodinu, dve alebo štyri, na dni, keď nie ste doma.</p>`,
     },
     water: {
       name: 'Voda',

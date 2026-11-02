@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Vào dịp lễ, mọi thứ tự thay trang phục đúng lúc: <a href="{christmas}">Giáng sinh</a> (mũ ông già Noel và tuyết), <a href="{halloween}">Halloween</a> (mũ phù thủy và bí ngô) và <a href="{easter}">Phục sinh</a> (tai thỏ và trứng khổng lồ). Phong cách Pixel mang lại vẻ trò chơi điện tử cổ điển.</p>
 <h3>Thiết kế vì sức khỏe của mèo</h3>
-<p>Bộ hẹn giờ có các lượt 5, 10 hoặc 15 phút; cuối lượt, các con vật mệt dần để mèo kết thúc bằng một lần bắt được. Bộ đếm lưu lại số lần bắt để chia sẻ với bạn bè. Âm thanh được tạo trực tiếp và, nếu bạn cho phép, micrô sẽ làm con vật giật mình trước tiếng động trong phòng.</p>`,
+<p>Bộ hẹn giờ có các lượt 5, 10 hoặc 15 phút; cuối lượt, các con vật mệt dần để mèo kết thúc bằng một lần bắt được. Bộ đếm lưu lại số lần bắt để chia sẻ với bạn bè. Âm thanh được tạo trực tiếp và, nếu bạn cho phép, micrô sẽ làm con vật giật mình trước tiếng động trong phòng.</p>
+<h3>Trò chơi thích ứng với mèo của bạn</h3>
+<p>Tốc độ tự động làm các con vật chậm lại khi mèo chạm mà không bắt được, và nhanh hơn khi nó bắt được hết. Thỉnh thoảng một con vật đi ngang qua màn hình, hoặc một bóng đen khiến tất cả bỏ chạy. Sâu bướm, chậm và dễ bắt, hợp với mèo con và mèo già. Thống kê lưu số lần bắt theo ngày và con mồi yêu thích; chế độ “máy tính bảng trên giá” tự bắt đầu phiên mới sau một, hai hoặc bốn giờ, cho những ngày bạn vắng nhà.</p>`,
     },
     water: {
       name: 'Dưới nước',

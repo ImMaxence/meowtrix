@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Pour les fêtes, tout s’habille tout seul à la bonne période : <a href="{christmas}">Noël</a> (bonnets et neige), <a href="{halloween}">Halloween</a> (chapeaux de sorcière et citrouilles) et <a href="{easter}">Pâques</a> (oreilles de lapin et œufs géants). Le style Pixel donne un air de jeu vidéo rétro.</p>
 <h3>Pensé pour le bien-être du chat</h3>
-<p>Un minuteur propose des séances de 5, 10 ou 15 minutes ; à la fin, les animaux fatiguent pour que le chat termine sur une prise. Un compteur garde ses prises, à partager avec ses amis. Les sons sont créés en direct et, si vous l’autorisez, le micro fait sursauter les animaux aux bruits de la pièce.</p>`,
+<p>Un minuteur propose des séances de 5, 10 ou 15 minutes ; à la fin, les animaux fatiguent pour que le chat termine sur une prise. Un compteur garde ses prises, à partager avec ses amis. Les sons sont créés en direct et, si vous l’autorisez, le micro fait sursauter les animaux aux bruits de la pièce.</p>
+<h3>Un jeu qui s’adapte à votre chat</h3>
+<p>La vitesse Auto ralentit les animaux quand votre chat touche sans attraper, et les accélère quand il attrape tout. De temps en temps, un animal de passage traverse l’écran, ou une ombre fait fuir tout le monde. Les chenilles, lentes et faciles à attraper, conviennent aux chatons et aux vieux chats. Les statistiques gardent les prises par jour et la proie préférée ; le mode « tablette posée » relance une séance toute seule une, deux ou quatre heures plus tard, pour les jours où vous êtes absent.</p>`,
     },
     water: {
       name: 'Eau',

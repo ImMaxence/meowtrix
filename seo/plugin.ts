@@ -156,7 +156,13 @@ export function seoPages(version: string): Plugin {
     generateBundle(_, bundle) {
       const index = bundle['index.html'];
       if (!index || index.type !== 'asset') throw new Error('index.html is missing from the bundle');
-      const template = String(index.source);
+      // The stylesheet goes into every page: one request less before the first picture.
+      let template = String(index.source);
+      const css = Object.values(bundle).find((f) => f.type === 'asset' && f.fileName.endsWith('.css'));
+      if (css && css.type === 'asset') {
+        template = template.replace(/<link rel="stylesheet"[^>]*href="\/assets\/[^"]+\.css"[^>]*>/, () => `<style>${String(css.source)}</style>`);
+        delete bundle[css.fileName];
+      }
       for (const page of PAGES) {
         const html = renderPage(template, page, version);
         if (page.path === '/') index.source = html;

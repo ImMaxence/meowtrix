@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Bayramlarda her şey doğru zamanda kendiliğinden giyinir: <a href="{christmas}">Noel</a> (Noel Baba şapkaları ve kar), <a href="{halloween}">Cadılar Bayramı</a> (cadı şapkaları ve balkabakları) ve <a href="{easter}">Paskalya</a> (tavşan kulakları ve dev yumurtalar). Piksel stili retro bir video oyunu görünümü verir.</p>
 <h3>Kedinin iyiliği düşünülerek tasarlandı</h3>
-<p>Bir zamanlayıcı 5, 10 veya 15 dakikalık oyunlar sunar; sonunda hayvanlar yorulur, böylece kedi bir avla bitirir. Bir sayaç avlarını saklar, arkadaşlarınızla paylaşmanız için. Sesler canlı üretilir ve izin verirseniz mikrofon hayvanların odadaki seslerle irkilmesini sağlar.</p>`,
+<p>Bir zamanlayıcı 5, 10 veya 15 dakikalık oyunlar sunar; sonunda hayvanlar yorulur, böylece kedi bir avla bitirir. Bir sayaç avlarını saklar, arkadaşlarınızla paylaşmanız için. Sesler canlı üretilir ve izin verirseniz mikrofon hayvanların odadaki seslerle irkilmesini sağlar.</p>
+<h3>Kedinize uyum sağlayan bir oyun</h3>
+<p>Otomatik hız, kediniz dokunup yakalayamadığında hayvanları yavaşlatır, her şeyi yakaladığında hızlandırır. Ara sıra geçen bir hayvan ekranı kat eder ya da bir gölge herkesi kaçırır. Tırtıllar, yavaş ve kolay yakalanır, yavru ve yaşlı kediler için uygundur. İstatistikler günlük yakalananları ve favori avı saklar; “standda tablet” modu bir, iki ya da dört saat sonra kendiliğinden yeni bir seans başlatır, dışarıda olduğunuz günler için.</p>`,
     },
     water: {
       name: 'Su',

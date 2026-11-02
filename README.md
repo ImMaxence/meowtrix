@@ -17,8 +17,8 @@ account, no ads.
   that actually step, a tail that follows. They wander, freeze when something moves, dash for cover
   and peek back out. A touch makes them flee, just like the real thing.
 - **Three worlds to hunt in.**
-  - **Land** — lizards, frogs, flies, ladybirds, beetles, grasshoppers, cockroaches, mice,
-    squirrels and birds.
+  - **Land** — lizards, frogs, flies, ladybirds, beetles, grasshoppers, cockroaches, caterpillars,
+    mice, squirrels and birds.
   - **Water** — goldfish, koi, a shoal of sardines, trout, salmon and baby sharks. A tap sends
     ripples across the pond; fish slip under rocks to hide.
   - **Sky** — butterflies that open their wings in the sun, blinking fireflies, feathers carried by
@@ -26,9 +26,17 @@ account, no ads.
     the screen… and lingers under the paw that catches it.
 - **It hears the room.** With the microphone on, animals startle at real noises. Every sound is
   synthesised live, so nothing ever loops.
+- **It adapts to your cat.** With speed on Auto, the animals slow down when your cat paws without
+  catching and speed up when it catches everything. Caterpillars, slow and soft, are there for
+  kittens and old cats.
+- **It keeps surprising.** Now and then an animal that isn't in your list wanders in for a minute,
+  or the shadow of a bird sweeps across and sends everyone running.
 - **Sessions that end on a win.** Play freely or for 5, 10 or 15 minutes. In the last minute the
   animals tire, and the session ends right after a catch, so your cat finishes satisfied. A catch
-  counter keeps score, with your cat's name on it.
+  counter keeps score, with your cat's name on it, and statistics keep the catches per day and the
+  favourite prey.
+- **It can play on its own.** On a tablet left on its stand, the screen rests between sessions and
+  a new one starts by itself one, two or four hours later, for the days you are out.
 
 ![Water theme: koi, a goldfish, a trout and a shoal of sardines among water lilies, a rock and weeds](docs/screenshots/eau.png)
 
@@ -45,8 +53,9 @@ account, no ads.
   (witch hats, glowing pumpkins, bats) or Easter (bunny ears, giant eggs, petals). Leave it on
   **Auto** and the right one turns up in season, or pick **None** to keep every day plain.
 - **Go retro.** A **Pixel** style turns the scene into chunky, dithered pixel art.
-- **Share the fun.** One button sends your cat's score with a link that rebuilds the exact same
-  scene on any device.
+- **Share the fun.** One button sends a picture card with your cat's name, its score and its prey,
+  plus a link that rebuilds the exact same scene on any device. Or tap **Random** for a scene you
+  didn't think of.
 
 ![Pixel style: lizards, a frog, a mouse and ladybirds in chunky pixels on sand](docs/screenshots/pixel.png)
 
@@ -65,7 +74,7 @@ account, no ads.
 
 | Animals | Sky | Settings |
 | --- | --- | --- |
-| ![Animals tab: how many of each species, and their colours](docs/screenshots/menu-animaux.png) | ![The butterflies and fireflies of the Sky theme](docs/screenshots/menu-ciel.png) | ![Settings tab: session length and your cat's name](docs/screenshots/menu-reglages.png) |
+| ![Animals tab: the animals on screen with their colours, and the others to add with a tap](docs/screenshots/menu-animaux.png) | ![The butterflies, fireflies, feathers and laser dot of the Sky theme](docs/screenshots/menu-ciel.png) | ![Settings tab: statistics, session length, cat's name and stand mode](docs/screenshots/menu-reglages.png) |
 
 > Stay close to your cat while it plays, and protect the screen from its claws.
 
@@ -80,6 +89,7 @@ built with Vite. Sounds use the Web Audio API; there is no backend.
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-checks and writes dist/
+npm test           # unit tests (Vitest): holiday dates, saved-settings migration, share links
 ```
 
 ### Versions
@@ -134,7 +144,8 @@ an incomplete language).
 | `src/game/brain.ts`, `species.ts` | Behaviour: wandering, alert, flight, hiding; per-species tuning |
 | `src/game/lizard/` | Lizards (and long-tailed lizard): body, legs, tongue, procedural skin |
 | `src/game/mammal/` | Mouse and squirrel: one parametric body, painted fur |
-| `src/game/bug/` | Cockroach and beetle: shell, six legs, antennae |
+| `src/game/bug/` | Cockroach and beetle: shell, six legs, antennae; caterpillar: segmented body, inching wave |
+| `src/game/shadow.ts`, `burst.ts` | A bird flying over with its shadow (scares everyone); sparks where a paw catches |
 | `src/game/hopper/` | Frog and grasshopper: moving by leaps |
 | `src/game/flyer/` | Fly, ladybird, bird: flight, landing, walking, grooming |
 | `src/game/sky/` | Sky theme: butterflies and fireflies (on the flyer engine), feather and laser dot (toys) |
@@ -146,7 +157,9 @@ an incomplete language).
 | `src/game/world.ts`, `pixel.ts` | Scene, camera, light, ground; Pixel-style rendering |
 | `src/audio/` | Synthesised sounds and microphone listening |
 | `src/menu.ts` | Menu: Land / Water / Sky, holidays, Animals, Scenery, Settings and About tabs |
-| `src/session.ts`, `preset.ts` | Timed sessions and catch counter; settings in a link (`?theme=sky&animals=laser.red:1…`) |
+| `src/session.ts`, `preset.ts` | Timed sessions, catch counter and statistics; settings in a link (`?theme=sky&animals=laser.red:1…`) |
+| `src/share-card.ts` | The picture card sent by the Share button |
+| `tests/` | Unit tests (`npm test`) |
 | `seo/` | Pages per theme and language, sitemap, llms.txt (see above) |
 | `public/` | PWA manifest, service worker, icons (`npm run icons` to regenerate), preview images, robots.txt, 404 page |
 

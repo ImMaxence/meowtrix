@@ -7,6 +7,59 @@ Sur le site, la page [/changelog/](https://meowtrix.mbonnici.fr/changelog/) raco
 anglais, pour les joueurs ; elle est écrite à partir de `seo/changelog.ts`. À chaque nouvelle version,
 on complète les deux : le build refuse un numéro de version sans entrée dans `seo/changelog.ts`.
 
+## 0.10.0 — 2 novembre 2026
+
+Plus léger au chargement (Lighthouse 92 / 100 / 100 / 100), des visiteurs qui volent, un oiseau
+qui passe, et un son de prise.
+
+### Ajouté
+
+- **Son de prise** : un petit « pop » clair (`Voice.catchPop`) avec la gerbe d'étincelles, là où la
+  patte attrape un animal.
+- **Visiteurs volants** : les mouches, coccinelles, oiseaux, papillons et lucioles peuvent passer
+  en visite comme les marcheurs (`Flyer.arrive` / `leave` / `gone`, qui réutilisent l'état `away`) ;
+  ils entrent en volant par un bord et repartent de même.
+- **Un oiseau passe au-dessus** (`src/game/shadow.ts`) : silhouette sombre qui bat des ailes à
+  1,1 unité de haut, un peu en avance sur son ombre douce (au sol, ou à la surface de l'eau) ; tout
+  le monde fuit quand il est à la verticale. Sur les trois thèmes.
+- **Pages de référencement** : une rubrique « Un jeu qui s'adapte à votre chat » (vitesse Auto,
+  visiteurs et ombre, chenilles, statistiques, tablette posée) à la fin de la page d'accueil dans les
+  44 langues (`seo/locales/*.ts`, donc aussi dans les versions Markdown et `llms-full.txt`).
+- **Lighthouse** en dépendance de développement : `npm run lighthouse` audite le Docker local
+  (http://localhost:8787). Scores mobiles au 2 novembre : performance 92, accessibilité 100, bonnes
+  pratiques 100, SEO 100, navigation par agents 100 (62 / 94 / 100 / 100 / 67 avant).
+
+### Modifié
+
+- **La scène se construit au premier geste** (`startBoot` : premier `pointerdown` ou `keydown`,
+  n'importe où), plus au chargement. Jouer reste actif avant : pressé trop tôt, il affiche la
+  progression et la partie démarre dès que la scène est prête (`playWhenReady`) ; plein écran et son
+  sont lancés dans le clic comme avant. Une page qu'on ne touche pas ne coûte rien — c'est aussi ce
+  que mesure Lighthouse, dont le rendu logiciel comptait 4 s pour la lumière d'ambiance (PMREM) et
+  3 s pour les shaders, négligeables sur une vraie carte graphique.
+- **Menu ouvert : la scène ne bouge plus.** La boucle d'animation ne tourne que pendant le jeu
+  (`startLoop` / `stopLoop`) ; derrière le menu, une image est dessinée à la demande
+  (`requestRender`) après chaque réglage, à l'arrivée d'une texture, ou au redimensionnement. Zéro
+  calcul au repos. Remplace les « vingt images par seconde » de la 0.9.0.
+- **Chargement en tâches courtes** : le moteur, puis la lumière d'ambiance (`World.buildEnvironment`,
+  sortie du constructeur), le sol, les cachettes, **un animal par image**, la fête en deux temps
+  (monde puis animaux), et la **pré-compilation des shaders** (`World.compile` →
+  `renderer.compileAsync`, 4 s au plus) avant la première image au lieu de 3 s bloquantes au premier
+  rendu.
+- **Sol peint dans un Web Worker** (`src/game/ground.worker.ts`, `OffscreenCanvas`) : la peinture
+  procédurale (512 px, bruit fractal, galets, brins d'herbe) quitte le fil principal. Le sol apparaît
+  tout de suite avec la tuile de 128 px du menu, puis reçoit la pleine résolution dès qu'elle est
+  prête (`World.onNeedRender` redessine). Sans `OffscreenCanvas`, la peinture se fait dans une tâche
+  suivante. Le code de peinture, sans three.js, est maintenant dans `src/game/ground-paint.ts`.
+- **Feuille de style inlinée** dans chaque page par `seo/plugin.ts` (plus de requête bloquante avant
+  la première image) ; `Menu.fit` mesure les rangées dans la frame suivante (plus de reflow forcé) ;
+  les rangées Thèmes et Onglets sont des `<div>` (un `<nav role="group">` était signalé) ; le
+  `viewport` autorise de nouveau le zoom pour les personnes malvoyantes (le canvas bloque pince et
+  double-tap par `touch-action: none`, et `gesturestart` est intercepté sur iOS) ; les emplacements
+  du squelette ont la hauteur des vraies rangées sur téléphone.
+- **README** : chenilles, vitesse Auto, surprises, tablette posée, statistiques, carte de partage,
+  tests ; captures du menu refaites avec la version actuelle.
+
 ## 0.9.0 — 2 novembre 2026
 
 Le jeu s'adapte au chat, le surprend, et la tablette peut jouer toute seule.

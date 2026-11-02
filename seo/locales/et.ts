@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Pühade ajal riietub kõik ise õigel ajal: <a href="{christmas}">jõulud</a> (päkapikumütsid ja lumi), <a href="{halloween}">halloween</a> (nõiakübarad ja kõrvitsad) ja <a href="{easter}">lihavõtted</a> (jänesekõrvad ja hiiglaslikud munad). Pikselstiil annab retromängu ilme.</p>
 <h3>Mõeldud kassi heaolu silmas pidades</h3>
-<p>Taimer pakub 5-, 10- või 15-minutilisi mängukordi; lõpus loomad väsivad, et kass lõpetaks saagiga. Loendur hoiab tema saagid alles, et neid sõpradega jagada. Helid luuakse reaalajas ja kui lubad, paneb mikrofon loomad toas olevate helide peale ehmuma.</p>`,
+<p>Taimer pakub 5-, 10- või 15-minutilisi mängukordi; lõpus loomad väsivad, et kass lõpetaks saagiga. Loendur hoiab tema saagid alles, et neid sõpradega jagada. Helid luuakse reaalajas ja kui lubad, paneb mikrofon loomad toas olevate helide peale ehmuma.</p>
+<h3>Mäng, mis kohaneb sinu kassiga</h3>
+<p>Automaatkiirus aeglustab loomi, kui kass puudutab, aga ei püüa, ja kiirendab neid, kui ta püüab kõik. Aeg-ajalt ületab ekraani mööduv loom või ajab vari kõik laiali. Röövikud, aeglased ja kergesti püütavad, sobivad kassipoegadele ja vanadele kassidele. Statistika hoiab saaki päevade kaupa ja lemmiksaaki; režiim „tahvel alusel“ alustab uue sessiooni ise ühe, kahe või nelja tunni pärast, päevadeks, mil sind kodus pole.</p>`,
     },
     water: {
       name: 'Vesi',

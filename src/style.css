@@ -1371,6 +1371,15 @@ a:focus-visible {
     font-size: 1rem;
   }
 
+  /* The placeholders match the rows they stand for, so nothing moves when the menu is drawn. */
+  .menu:not(.ready) .themes {
+    min-height: 44px;
+  }
+
+  .menu:not(.ready) .tabs {
+    min-height: 63px;
+  }
+
   .species-row {
     gap: 10px;
     padding: 10px;

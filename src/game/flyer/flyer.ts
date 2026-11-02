@@ -98,6 +98,8 @@ export class Flyer {
   private pauseLeft = 0;
   private walkPhase = 0;
   private hiddenLeft = 0;
+  /** A visitor on its way home: once off screen, it stays there (see gone). */
+  private leaving = false;
   private readonly seed = rand(0, 100);
   private readonly poseInfo: FlyerPose = { ground: 1, walking: false, walkPhase: 0, grooming: -1, speed: 0, climb: 0, time: 0 };
 
@@ -117,6 +119,25 @@ export class Flyer {
 
   get heads(): readonly THREE.Object3D[] {
     return this.body.heads;
+  }
+
+  /** A visitor: starts off screen and flies in. */
+  arrive(): void {
+    this.reenter();
+  }
+
+  /** A visitor going home: flies off screen for good (see gone). */
+  leave(): void {
+    this.leaving = true;
+    if (this.state !== 'away') {
+      this.go('away');
+      this.boost = 0.8;
+    }
+  }
+
+  /** Off screen, after leave(). */
+  get gone(): boolean {
+    return this.leaving && !this.group.visible;
   }
 
   /** Taking off or flying: used to keep the microphone from hearing the buzz. */
@@ -311,7 +332,7 @@ export class Flyer {
     const b = this.habitat.bounds, p = this.pos;
     if (Math.max(b.minX - p.x, p.x - b.maxX, b.minZ - p.z, p.z - b.maxZ) > 0.6) {
       this.group.visible = false;
-      this.hiddenLeft = rand(3, 8) * (1 - 0.7 * this.habitat.tired);
+      this.hiddenLeft = this.leaving ? Infinity : rand(3, 8) * (1 - 0.7 * this.habitat.tired);
     }
   }
 

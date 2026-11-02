@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>En las fiestas, todo se viste solo en el momento justo: <a href="{christmas}">Navidad</a> (gorros y nieve), <a href="{halloween}">Halloween</a> (sombreros de bruja y calabazas) y <a href="{easter}">Pascua</a> (orejas de conejo y huevos gigantes). El estilo Píxel le da un aire de videojuego retro.</p>
 <h3>Pensado para el bienestar del gato</h3>
-<p>Un temporizador ofrece sesiones de 5, 10 o 15 minutos; al final, los animales se cansan para que el gato termine con una presa. Un contador guarda sus presas, para compartirlas con los amigos. Los sonidos se crean en directo y, si lo permites, el micrófono hace que los animales se asusten con los ruidos de la habitación.</p>`,
+<p>Un temporizador ofrece sesiones de 5, 10 o 15 minutos; al final, los animales se cansan para que el gato termine con una presa. Un contador guarda sus presas, para compartirlas con los amigos. Los sonidos se crean en directo y, si lo permites, el micrófono hace que los animales se asusten con los ruidos de la habitación.</p>
+<h3>Un juego que se adapta a tu gato</h3>
+<p>La velocidad Auto frena a los animales cuando tu gato toca sin atrapar, y los acelera cuando lo atrapa todo. De vez en cuando un animal de paso cruza la pantalla, o una sombra hace huir a todos. Las orugas, lentas y fáciles de atrapar, van bien para gatitos y gatos mayores. Las estadísticas guardan las capturas por día y la presa favorita; el modo «tableta en soporte» inicia una nueva sesión por sí solo una, dos o cuatro horas después, para los días en que no estás.</p>`,
     },
     water: {
       name: 'Agua',

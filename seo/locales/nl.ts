@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Met de feestdagen verkleedt alles zich vanzelf op het juiste moment: <a href="{christmas}">Kerstmis</a> (kerstmutsen en sneeuw), <a href="{halloween}">Halloween</a> (heksenhoeden en pompoenen) en <a href="{easter}">Pasen</a> (konijnenoren en reuze-eieren). De Pixel-stijl geeft het een retrogame-look.</p>
 <h3>Gemaakt met het welzijn van de kat in gedachten</h3>
-<p>Een timer biedt sessies van 5, 10 of 15 minuten; aan het eind worden de dieren moe zodat de kat eindigt met een vangst. Een teller houdt zijn vangsten bij, om te delen met vrienden. De geluiden worden live gemaakt en als je het toestaat, laat de microfoon de dieren schrikken van geluiden in de kamer.</p>`,
+<p>Een timer biedt sessies van 5, 10 of 15 minuten; aan het eind worden de dieren moe zodat de kat eindigt met een vangst. Een teller houdt zijn vangsten bij, om te delen met vrienden. De geluiden worden live gemaakt en als je het toestaat, laat de microfoon de dieren schrikken van geluiden in de kamer.</p>
+<h3>Een spel dat zich aanpast aan je kat</h3>
+<p>De automatische snelheid remt de dieren af als je kat aait zonder te vangen, en versnelt ze als hij alles vangt. Af en toe steekt een passerend dier het scherm over, of jaagt een schaduw iedereen weg. Rupsen, traag en makkelijk te vangen, passen bij kittens en oude katten. De statistieken bewaren de vangsten per dag en de favoriete prooi; de stand „tablet op standaard“ start vanzelf een nieuwe sessie na één, twee of vier uur, voor de dagen dat je weg bent.</p>`,
     },
     water: {
       name: 'Water',

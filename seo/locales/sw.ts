@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Wakati wa sikukuu, kila kitu hujipamba chenyewe kwa wakati unaofaa: <a href="{christmas}">Krismasi</a> (kofia za Santa na theluji), <a href="{halloween}">Halloween</a> (kofia za wachawi na maboga) na <a href="{easter}">Pasaka</a> (masikio ya sungura na mayai makubwa). Mtindo wa Pikseli huleta mwonekano wa mchezo wa video wa zamani.</p>
 <h3>Imeundwa kwa ustawi wa paka</h3>
-<p>Kipima muda hutoa michezo ya dakika 5, 10 au 15; mwishoni wanyama huchoka ili paka amalize kwa kuwinda. Kihesabu huhifadhi mawindo yake, ya kushiriki na marafiki. Sauti huundwa moja kwa moja, na ukiruhusu, maikrofoni huwafanya wanyama washtuke kwa sauti za chumbani.</p>`,
+<p>Kipima muda hutoa michezo ya dakika 5, 10 au 15; mwishoni wanyama huchoka ili paka amalize kwa kuwinda. Kihesabu huhifadhi mawindo yake, ya kushiriki na marafiki. Sauti huundwa moja kwa moja, na ukiruhusu, maikrofoni huwafanya wanyama washtuke kwa sauti za chumbani.</p>
+<h3>Mchezo unaojirekebisha kulingana na paka wako</h3>
+<p>Kasi ya otomatiki hupunguza mwendo wa wanyama paka wako akigusa bila kukamata, na huuongeza akikamata kila kitu. Mara kwa mara mnyama anayepita huvuka skrini, au kivuli huwafukuza wote. Viwavi, wapole na rahisi kukamata, wanafaa kwa paka wadogo na wazee. Takwimu huhifadhi mikamato ya kila siku na windo pendwa; hali ya “kompyuta kibao kwenye kishikilio” huanzisha kipindi kipya yenyewe baada ya saa moja, mbili au nne, kwa siku ambazo haupo.</p>`,
     },
     water: {
       name: 'Majini',

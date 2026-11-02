@@ -1,14 +1,15 @@
 {
   "name": "meowtrix",
   "private": true,
-  "version": "0.9.0",
+  "version": "0.10.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "icons": "node scripts/gen-icons.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lighthouse": "lighthouse http://localhost:8787/en/ --view --chrome-flags=--headless=new"
   },
   "dependencies": {
     "three": "^0.187.0"
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/three": "^0.187.0",
+    "lighthouse": "^13.6.0",
     "typescript": "~5.9.3",
     "vite": "^8.3.5",
     "vitest": "^5.1.0"

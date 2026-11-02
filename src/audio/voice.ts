@@ -356,6 +356,27 @@ export class Voice {
     this.burst(dest, t, 0.04, 1200, 1, 0.08 + 0.12 * intensity);
   }
 
+  /** A paw landed on an animal: a soft, bright pop, for the human watching. */
+  catchPop(pan: number): void {
+    const ctx = this.ctx;
+    const dest = this.dest(pan);
+    if (!ctx || !dest) return;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(1040, t + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(780, t + 0.12);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    osc.connect(g).connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.17);
+    this.burst(dest, t, 0.02, 2600, 1.5, 0.1);
+  }
+
   /** Tiny insect feet on the ground: a dry tick around `freq` Hz. */
   tick(intensity: number, pan: number, freq: number): void {
     const ctx = this.ctx;

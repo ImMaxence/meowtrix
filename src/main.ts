@@ -19,8 +19,6 @@ import { shareCard } from './share-card';
 const HOLD_MS = 1400;
 const REPO = 'https://github.com/ImMaxence/meowtrix';
 const SITE = 'meowtrix.mbonnici.fr';
-/** While the menu is open the scene is only a blurred backdrop: this many ms between frames. */
-const IDLE_FRAME_MS = 48;
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const canvas = $<HTMLCanvasElement>('#scene');
@@ -84,8 +82,8 @@ function timeLeft(ms: number): string {
 }
 
 // The menu is drawn once its language is loaded, so it never flashes in another one. The 3D scene
-// comes after, step by step (see boot): building it takes seconds on a phone, and the menu must
-// not wait for it.
+// is built at the first touch, step by step (see boot): building it takes seconds on a phone, the
+// menu must not wait for it, and a page nobody touches yet should cost nothing.
 void setLang(settings.lang).then(start);
 
 function start(): void {
@@ -96,6 +94,35 @@ function start(): void {
   let input: PointerInput | null = null;
   /** Set when a setting changed while the scene was being built. */
   let changedWhileLoading = false;
+  /** The scene is built at the first touch or key (see startBoot); Play pressed before that waits for it. */
+  let bootStarted = false;
+  let playWhenReady = false;
+  /** The animation loop runs only while the cat plays; behind the menu, frames are drawn on demand. */
+  let looping = false;
+  let renderQueued = false;
+
+  const startLoop = () => {
+    if (!world || looping) return;
+    looping = true;
+    last = 0;
+    world.renderer.setAnimationLoop(frame);
+  };
+  const stopLoop = () => {
+    if (!world || !looping) return;
+    looping = false;
+    world.renderer.setAnimationLoop(null);
+  };
+  /** One frame, soon, unless the loop is running anyway. */
+  const requestRender = () => {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      if (looping || !world) return;
+      world.render();
+      showScene();
+    });
+  };
 
   let fete: Fete = resolveFete(settings.fete);
   const applyTheme = () => {
@@ -195,7 +222,7 @@ function start(): void {
     options.render();
     renderStats();
     renderSummary();
-    playBtn.textContent = t(!game ? 'loading' : played && !sessionOver ? 'resume' : 'play');
+    playBtn.textContent = t(!game ? (bootStarted ? 'loading' : 'play') : played && !sessionOver ? 'resume' : 'play');
     exitFsBtn.hidden = !isFullscreen();
   };
 
@@ -232,6 +259,7 @@ function start(): void {
     if (key === 'fete') applyFete();
     if (key === 'session') session.setLength(settings.session);
     refreshMenu();
+    requestRender();
   }
 
   /** Back to a single green lizard on stone, in the land theme, with the fête in season. */
@@ -241,6 +269,7 @@ function start(): void {
     changedWhileLoading = true;
     applyAll();
     refreshMenu();
+    requestRender();
   }
 
   /** A random theme with two or three of its species, their colours, a ground and some hiding spots. */
@@ -263,6 +292,7 @@ function start(): void {
     changedWhileLoading = true;
     applyAll();
     refreshMenu();
+    requestRender();
   }
 
   /** The text and the link (to this scene) for the share sheet, with a picture where the browser allows. */
@@ -314,7 +344,9 @@ function start(): void {
     if (input) input.enabled = false;
     if (game) game.active = false;
     voice.setMuted(true);
+    stopLoop();
     applyFete();
+    requestRender();
     menu.classList.remove('hidden');
     holdBtn.hidden = true;
     renderHud();
@@ -341,7 +373,7 @@ function start(): void {
     restUntil = Date.now() + settings.rest * 3_600_000;
     restEl.hidden = false;
     renderHud();
-    world?.renderer.setAnimationLoop(null);
+    stopLoop();
     updateRest();
     restTimer = window.setInterval(updateRest, 20_000);
   }
@@ -360,15 +392,19 @@ function start(): void {
     clearInterval(restTimer);
     resting = false;
     restEl.hidden = true;
-    last = 0;
-    world?.renderer.setAnimationLoop(frame);
   }
 
   async function play(): Promise<void> {
-    if (!game || !input) return;
-    // Fullscreen and audio must start synchronously inside the click.
+    // Fullscreen and audio must start synchronously inside the click, even if the scene is still to come.
     enterFullscreen();
     const ctx = voice.init();
+    if (!game || !input) {
+      // Not built yet: Play shows the progress and the game starts as soon as it is ready.
+      playWhenReady = true;
+      playBtn.disabled = true;
+      startBoot();
+      return;
+    }
     voice.setVolume(settings.volume);
     voice.setMuted(false);
     wakeLock.request();
@@ -384,6 +420,7 @@ function start(): void {
     playing = true;
     input.enabled = true;
     game.active = true;
+    startLoop();
     renderHud();
     if (!played) toast(t(matchMedia('(pointer: fine)').matches ? 'holdHintMouse' : 'holdHint'));
     played = true;
@@ -460,17 +497,22 @@ function start(): void {
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('dblclick', (e) => e.preventDefault());
 
-  // The menu is usable from here on; Play waits for the scene.
-  playBtn.disabled = true;
-  playBtn.classList.add('is-loading');
+  // The menu is usable from here on. The scene is built at the first touch or key, anywhere.
   refreshMenu();
   menu.classList.add('ready');
-  void boot();
+  function startBoot(): void {
+    if (bootStarted) return;
+    bootStarted = true;
+    playBtn.classList.add('is-loading');
+    refreshMenu();
+    void boot();
+  }
+  document.addEventListener('pointerdown', startBoot, { once: true, passive: true });
+  document.addEventListener('keydown', startBoot, { once: true });
 
   // --- Loop -------------------------------------------------------------------
 
   let last = 0;
-  let lastIdle = 0;
   let perfTime = 0;
   let perfFrames = 0;
   /** Quality is adjusted at most this many times, then left alone. */
@@ -478,13 +520,15 @@ function start(): void {
   let sceneShown = false;
   let hudSecond = -1;
 
+  /** The first picture is there: fade the scene in behind the menu. */
+  const showScene = () => {
+    if (sceneShown) return;
+    sceneShown = true;
+    document.body.classList.add('scene-ready');
+  };
+
   const frame = (now: number) => {
     if (!world || !game) return;
-    // Behind the open menu, a few frames a second are plenty: the battery matters more.
-    if (!playing) {
-      if (now - lastIdle < IDLE_FRAME_MS) return;
-      lastIdle = now;
-    }
     const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60;
     last = now;
 
@@ -506,11 +550,7 @@ function start(): void {
       if (level) game.noise(level);
     }
     world.render();
-    // The first picture is there: fade the scene in behind the menu.
-    if (!sceneShown) {
-      sceneShown = true;
-      document.body.classList.add('scene-ready');
-    }
+    showScene();
 
     // While the cat plays, measure the frame rate a few times: a slow device gets a lighter
     // picture, a fast one that started modestly gets the full one.
@@ -529,29 +569,47 @@ function start(): void {
   };
 
   /**
-   * Builds the scene in four steps, with a frame between them so the menu stays responsive and the
-   * Play button shows the progress: renderer, ground, animals, then the fête's outfits.
+   * Builds the scene one piece per frame, so the menu stays responsive and the Play button shows
+   * the progress: renderer, light, ground, hiding spots, each animal, the fête, then the shaders.
+   * Every piece is a task of its own, short enough not to be felt as a freeze.
    */
   async function boot(): Promise<void> {
-    const step = async (done: number) => {
-      playBtn.style.setProperty('--progress', `${done * 25}%`);
-      await nextFrame();
-    };
     const w = createWorld();
     if (!w) return;
+    const counts = SPECIES[settings.theme].flatMap((sp) => Array<typeof sp.key>(settings.animals[sp.key]).fill(sp.key));
+    const total = 7 + counts.length;
+    let done = 0;
+    const step = async () => {
+      playBtn.style.setProperty('--progress', `${Math.round((++done / total) * 100)}%`);
+      await nextFrame();
+    };
     // Phones and tablets start a notch lower; the frame rate check raises it if they can take it.
     w.setQuality(matchMedia('(pointer: coarse)').matches ? 1 : 2);
-    await step(1);
+    w.onNeedRender = requestRender;
+    await step();
+    w.buildEnvironment();
+    await step();
     w.setViewSize(settings.size);
     w.setStyle(settings.style);
     w.setGround(settings.ground[settings.theme]);
-    await step(2);
+    await step();
     const g = new Game(w, voice);
     g.autoSpeed = settings.speed === 'auto';
     g.speed = SPEED_FACTOR[settings.speed];
-    g.setTheme(settings.theme, settings.covers[settings.theme], settings.animals, settings.colors);
-    await step(3);
+    const none = Object.fromEntries(Object.keys(settings.animals).map((k) => [k, 0])) as typeof settings.animals;
+    g.setTheme(settings.theme, settings.covers[settings.theme], none, settings.colors);
+    await step();
+    // One animal per frame: a lizard or a koi is the heaviest thing to build.
+    const partial = { ...none };
+    for (const key of counts) {
+      partial[key]++;
+      g.setPopulation(partial, settings.colors);
+      await step();
+    }
+    w.setFete(fete);
+    await step();
     g.setFete(fete);
+    await step();
     g.onCatch = (key) => {
       if (!playing) return;
       session.caught(key);
@@ -559,7 +617,14 @@ function start(): void {
       // A short buzz when a paw lands right on an animal.
       if (settings.vibration && vibrationSupported) navigator.vibrate(40);
     };
-    await step(4);
+    // Shaders compile before the first picture, in the background where the GPU allows; a driver
+    // that never answers must not hold the game, so the first picture compiles them then.
+    try {
+      await Promise.race([w.compile(), new Promise((resolve) => setTimeout(resolve, 4000))]);
+    } catch {
+      // Not supported here: the first picture compiles them instead.
+    }
+    await step();
 
     world = w;
     game = g;
@@ -567,27 +632,31 @@ function start(): void {
     if (changedWhileLoading) applyAll();
     session.setLength(settings.session);
     if (import.meta.env.DEV) Object.assign(window, { meowtrix: { world, game, session } });
-    w.renderer.setAnimationLoop(frame);
+    requestRender();
 
     playBtn.disabled = false;
     playBtn.classList.remove('is-loading');
     refreshMenu();
+    if (playWhenReady) {
+      playWhenReady = false;
+      void play();
+    }
   }
 
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
     world?.resize();
+    requestRender();
     clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => game?.relayout(false), 400);
   });
   document.addEventListener('visibilitychange', () => {
     if (!world) return;
     if (document.hidden) {
-      world.renderer.setAnimationLoop(null);
+      stopLoop();
       voice.suspend();
     } else {
-      last = 0;
-      if (!resting) world.renderer.setAnimationLoop(frame);
+      if (playing) startLoop();
       voice.resume();
     }
   });

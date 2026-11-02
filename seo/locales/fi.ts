@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Juhlapyhinä kaikki pukeutuu itsestään oikeaan aikaan: <a href="{christmas}">joulu</a> (tonttulakit ja lunta), <a href="{halloween}">halloween</a> (noitahatut ja kurpitsat) ja <a href="{easter}">pääsiäinen</a> (pupunkorvat ja jättimunat). Pikselityyli antaa retropelin tunnelman.</p>
 <h3>Kissan hyvinvointi mielessä</h3>
-<p>Ajastin tarjoaa 5, 10 tai 15 minuutin pelikertoja; lopussa eläimet väsyvät, jotta kissa lopettaa saaliiseen. Laskuri pitää kirjaa saaliista, joita voi jakaa ystäville. Äänet luodaan reaaliajassa, ja jos sallit, mikrofoni saa eläimet säikähtämään huoneen ääniä.</p>`,
+<p>Ajastin tarjoaa 5, 10 tai 15 minuutin pelikertoja; lopussa eläimet väsyvät, jotta kissa lopettaa saaliiseen. Laskuri pitää kirjaa saaliista, joita voi jakaa ystäville. Äänet luodaan reaaliajassa, ja jos sallit, mikrofoni saa eläimet säikähtämään huoneen ääniä.</p>
+<h3>Peli, joka mukautuu kissaasi</h3>
+<p>Automaattinen nopeus hidastaa eläimiä, kun kissasi koskettaa saamatta kiinni, ja nopeuttaa niitä, kun se saa kaiken kiinni. Silloin tällöin ohikulkeva eläin ylittää näytön tai varjo säikäyttää kaikki pakoon. Toukat, hitaat ja helpot napata, sopivat pennuille ja vanhoille kissoille. Tilastot tallentavat saaliit päivittäin ja suosikkisaaliin; ”tabletti telineessä” -tila aloittaa uuden session itsestään tunnin, kahden tai neljän kuluttua, niiksi päiviksi kun olet poissa.</p>`,
     },
     water: {
       name: 'Vesi',

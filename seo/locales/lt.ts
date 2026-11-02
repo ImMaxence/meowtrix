@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Šventėms viskas pasipuošia savaime tinkamu metu: <a href="{christmas}">Kalėdos</a> (kepurės ir sniegas), <a href="{halloween}">Helovinas</a> (raganų skrybėlės ir moliūgai) ir <a href="{easter}">Velykos</a> (kiškio ausys ir milžiniški kiaušiniai). Pikselių stilius suteikia retro vaizdo žaidimo išvaizdą.</p>
 <h3>Sukurta galvojant apie katės gerovę</h3>
-<p>Laikmatis siūlo 5, 10 ar 15 minučių žaidimus; pabaigoje gyvūnai pavargsta, kad katė baigtų su laimikiu. Skaitiklis saugo jos laimikius, kuriais galima pasidalinti su draugais. Garsai kuriami tiesiogiai, o jei leisi, mikrofonas privers gyvūnus krūptelėti nuo kambario garsų.</p>`,
+<p>Laikmatis siūlo 5, 10 ar 15 minučių žaidimus; pabaigoje gyvūnai pavargsta, kad katė baigtų su laimikiu. Skaitiklis saugo jos laimikius, kuriais galima pasidalinti su draugais. Garsai kuriami tiesiogiai, o jei leisi, mikrofonas privers gyvūnus krūptelėti nuo kambario garsų.</p>
+<h3>Žaidimas, kuris prisitaiko prie jūsų katės</h3>
+<p>Automatinis greitis sulėtina gyvūnus, kai katė liečia, bet nepagauna, ir pagreitina, kai pagauna viską. Kartkartėmis per ekraną pereina praeivis gyvūnas arba šešėlis visus išgąsdina. Vikšrai, lėti ir lengvai pagaunami, tinka kačiukams ir senoms katėms. Statistika saugo laimikius pagal dienas ir mėgstamiausią grobį; režimas „planšetė ant stovo“ pats pradeda naują seansą po valandos, dviejų ar keturių, toms dienoms, kai jūsų nėra namie.</p>`,
     },
     water: {
       name: 'Vanduo',

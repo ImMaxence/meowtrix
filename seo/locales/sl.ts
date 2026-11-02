@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Za praznike se vse samo preobleče ob pravem času: <a href="{christmas}">božič</a> (kape in sneg), <a href="{halloween}">noč čarovnic</a> (čarovniški klobuki in buče) in <a href="{easter}">velika noč</a> (zajčja ušesa in velikanska jajca). Slog Piksli da videz retro videoigre.</p>
 <h3>Zasnovano za dobro počutje mačke</h3>
-<p>Časovnik ponuja igre po 5, 10 ali 15 minut; na koncu se živali utrudijo, da mačka konča z ulovom. Števec hrani njen ulov, ki ga lahko deliš s prijatelji. Zvoki nastajajo v živo in, če dovoliš, mikrofon poskrbi, da se živali zdrznejo ob zvokih v sobi.</p>`,
+<p>Časovnik ponuja igre po 5, 10 ali 15 minut; na koncu se živali utrudijo, da mačka konča z ulovom. Števec hrani njen ulov, ki ga lahko deliš s prijatelji. Zvoki nastajajo v živo in, če dovoliš, mikrofon poskrbi, da se živali zdrznejo ob zvokih v sobi.</p>
+<h3>Igra, ki se prilagaja vaši mački</h3>
+<p>Samodejna hitrost upočasni živali, ko mačka tipa, a ne ulovi, in jih pospeši, ko ulovi vse. Tu in tam zaslon prečka mimoidoča žival ali senca vse prežene. Gosenice, počasne in lahke za ulov, so primerne za mladiče in stare mačke. Statistika hrani ulove po dnevih in najljubši plen; način „tablica na stojalu“ sam začne novo sejo eno, dve ali štiri ure pozneje, za dneve, ko vas ni doma.</p>`,
     },
     water: {
       name: 'Voda',

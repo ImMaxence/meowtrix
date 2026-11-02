@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Till högtiderna klär allt ut sig av sig självt vid rätt tid: <a href="{christmas}">jul</a> (tomteluvor och snö), <a href="{halloween}">halloween</a> (häxhattar och pumpor) och <a href="{easter}">påsk</a> (kaninöron och jätteägg). Pixelstilen ger en retrospelskänsla.</p>
 <h3>Gjort med kattens välbefinnande i åtanke</h3>
-<p>En timer erbjuder pass på 5, 10 eller 15 minuter; i slutet blir djuren trötta så att katten avslutar med en fångst. En räknare sparar fångsterna, att dela med vänner. Ljuden skapas live och om du tillåter det får mikrofonen djuren att skvätta till av ljud i rummet.</p>`,
+<p>En timer erbjuder pass på 5, 10 eller 15 minuter; i slutet blir djuren trötta så att katten avslutar med en fångst. En räknare sparar fångsterna, att dela med vänner. Ljuden skapas live och om du tillåter det får mikrofonen djuren att skvätta till av ljud i rummet.</p>
+<h3>Ett spel som anpassar sig till din katt</h3>
+<p>Automatisk hastighet saktar ner djuren när din katt tassar utan att fånga, och snabbar upp dem när den fångar allt. Då och då korsar ett förbipasserande djur skärmen, eller en skugga får alla att fly. Larver, långsamma och lätta att fånga, passar kattungar och gamla katter. Statistiken sparar fångster per dag och favoritbytet; läget ”surfplatta i ställ” startar ett nytt pass av sig självt en, två eller fyra timmar senare, för dagarna du är borta.</p>`,
     },
     water: {
       name: 'Vatten',

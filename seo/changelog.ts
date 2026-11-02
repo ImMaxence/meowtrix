@@ -20,6 +20,22 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '0.10.0',
+    date: '2026-11-02',
+    summary: 'Lighter to open, visitors that fly, a bird passing over, and a sound for each catch.',
+    added: [
+      '<strong>A soft pop</strong> with the sparks where a paw lands on an animal, so you can hear the catch too.',
+      '<strong>Flying visitors</strong>: flies, ladybirds, birds, butterflies and fireflies can now drop by for a minute like the walkers do, flying in from an edge and out again.',
+      '<strong>A bird passes overhead</strong>: its silhouette flaps across the sky, its shadow sweeps the ground or the water, and everyone runs for cover.',
+    ],
+    improved: [
+      '<strong>The page opens lighter.</strong> The 3D scene is built at your first tap, one small piece per frame, instead of while the page loads; press Play right away and the game starts as soon as it is ready. The ground is painted off the main thread, and the shaders compile before the first picture.',
+      'Behind the open menu the scene stands still, which saves the battery.',
+      'Zooming the page is allowed again for people who need it; the game itself still blocks pinch and double-tap zoom.',
+      'The home page, in every language, now tells how the game adapts to your cat.',
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-11-02',
     summary: 'A game that adapts to your cat, surprises, caterpillars, and a tablet that plays on its own.',

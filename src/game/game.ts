@@ -59,7 +59,7 @@ type Spawner = (color: string, offset: number) => Actor;
 /** An animal of the theme that isn't in the menu's count: it comes by for a while, then leaves. */
 interface Visitor {
   key: AnimalKey;
-  actor: { brain: Brain };
+  actor: { brain: Brain } | { flyer: Flyer };
   leaveAt: number;
   leaving: boolean;
 }
@@ -262,19 +262,20 @@ export class Game implements Habitat {
     this.shadow.start(this.bounds, this.world.underwater ? SURFACE + 0.01 : 0.01, () => this.noise(2));
   }
 
-  /** A species of the theme that isn't on screen walks in for a while. Only walkers: flyers have no way in or out. */
+  /** A species of the theme that isn't on screen walks or flies in for a while. */
   private inviteVisitor(): boolean {
     if (this.visitors.length) return false;
     const candidates = SPECIES[this.theme].filter((sp) => !this.actors.get(sp.key)?.length && sp.group !== 'toys');
     if (!candidates.length) return false;
     const sp = candidates[Math.floor(rand(0, candidates.length))];
     const actor = this.spawners[sp.key](sp.variants[Math.floor(rand(0, sp.variants.length))].id, 0);
-    if (!('brain' in actor)) {
+    if ('toy' in actor) {
       this.remove(actor);
       return false;
     }
     dress(this.heads(actor), this.fete);
-    actor.brain.arrive();
+    if ('brain' in actor) actor.brain.arrive();
+    else actor.flyer.arrive();
     this.visitors.push({ key: sp.key, actor, leaveAt: this.time + rand(...VISIT), leaving: false });
     this.refreshLists();
     return true;
@@ -283,17 +284,18 @@ export class Game implements Habitat {
   private updateVisitors(): void {
     let left = false;
     for (const v of this.visitors) {
+      const mind = 'brain' in v.actor ? v.actor.brain : v.actor.flyer;
       if (!v.leaving && this.time >= v.leaveAt) {
         v.leaving = true;
-        v.actor.brain.leave();
+        mind.leave();
       }
-      if (v.leaving && v.actor.brain.gone) {
+      if (v.leaving && mind.gone) {
         this.remove(v.actor);
         left = true;
       }
     }
     if (!left) return;
-    this.visitors = this.visitors.filter((v) => !(v.leaving && v.actor.brain.gone));
+    this.visitors = this.visitors.filter((v) => !(v.leaving && ('brain' in v.actor ? v.actor.brain : v.actor.flyer).gone));
     this.refreshLists();
   }
 
@@ -325,6 +327,7 @@ export class Game implements Habitat {
     this.lastCatch = this.time;
     this.catches++;
     this.burst.spawn(x, y, z);
+    this.voice.catchPop(this.world.panOf(x));
     this.onCatch?.(key);
   }
 

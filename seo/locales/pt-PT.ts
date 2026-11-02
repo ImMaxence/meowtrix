@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Nas festas, tudo se veste sozinho na altura certa: <a href="{christmas}">Natal</a> (gorros e neve), <a href="{halloween}">Halloween</a> (chapéus de bruxa e abóboras) e <a href="{easter}">Páscoa</a> (orelhas de coelho e ovos gigantes). O estilo Píxel dá um ar de videojogo retro.</p>
 <h3>Pensado para o bem-estar do gato</h3>
-<p>Um temporizador propõe sessões de 5, 10 ou 15 minutos; no fim, os animais cansam-se para o gato acabar com uma captura. Um contador guarda as capturas, para partilhar com os amigos. Os sons são criados em direto e, se o permitir, o microfone faz os animais assustarem-se com os ruídos da sala.</p>`,
+<p>Um temporizador propõe sessões de 5, 10 ou 15 minutos; no fim, os animais cansam-se para o gato acabar com uma captura. Um contador guarda as capturas, para partilhar com os amigos. Os sons são criados em direto e, se o permitir, o microfone faz os animais assustarem-se com os ruídos da sala.</p>
+<h3>Um jogo que se adapta ao seu gato</h3>
+<p>A velocidade Auto abranda os animais quando o gato toca sem apanhar, e acelera-os quando apanha tudo. De vez em quando um animal de passagem atravessa o ecrã, ou uma sombra põe todos em fuga. As lagartas, lentas e fáceis de apanhar, servem para gatinhos e gatos idosos. As estatísticas guardam as capturas por dia e a presa favorita; o modo «tablet no suporte» inicia sozinho uma nova sessão uma, duas ou quatro horas depois, para os dias em que está fora.</p>`,
     },
     water: {
       name: 'Água',

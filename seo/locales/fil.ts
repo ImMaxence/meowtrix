@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Sa mga pista, kusang nagbibihis ang lahat sa tamang panahon: <a href="{christmas}">Pasko</a> (Santa hat at niyebe), <a href="{halloween}">Halloween</a> (sombrero ng mangkukulam at kalabasa) at <a href="{easter}">Pasko ng Pagkabuhay</a> (tainga ng kuneho at higanteng itlog). Ang Pixel na istilo ay may itsura ng retro na video game.</p>
 <h3>Ginawa para sa kapakanan ng pusa</h3>
-<p>May timer na 5, 10 o 15 minuto; sa dulo, napapagod ang mga hayop para matapos ang pusa sa isang huli. May counter na nagtatala ng mga huli niya para maibahagi sa mga kaibigan. Live na nabubuo ang mga tunog, at kung papayagan mo, pinapagulat ng mikropono ang mga hayop sa ingay sa kuwarto.</p>`,
+<p>May timer na 5, 10 o 15 minuto; sa dulo, napapagod ang mga hayop para matapos ang pusa sa isang huli. May counter na nagtatala ng mga huli niya para maibahagi sa mga kaibigan. Live na nabubuo ang mga tunog, at kung papayagan mo, pinapagulat ng mikropono ang mga hayop sa ingay sa kuwarto.</p>
+<h3>Larong umaangkop sa pusa mo</h3>
+<p>Pinapabagal ng Auto na bilis ang mga hayop kapag humahawak ang pusa mo nang hindi nakakahuli, at pinapabilis kapag nahuhuli lahat. Paminsan-minsan, may dumaraang hayop sa screen, o isang anino ang nagpapatakbo sa lahat. Ang mga uod, mabagal at madaling hulihin, ay bagay sa mga kuting at matatandang pusa. Itinatala ng estadistika ang mga huli bawat araw at ang paboritong biktima; ang mode na “tablet sa stand” ay kusang nagsisimula ng bagong sesyon isa, dalawa o apat na oras pagkatapos, para sa mga araw na wala ka.</p>`,
     },
     water: {
       name: 'Tubig',

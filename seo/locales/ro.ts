@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>De sărbători, totul se îmbracă singur la momentul potrivit: <a href="{christmas}">Crăciun</a> (căciulițe și zăpadă), <a href="{halloween}">Halloween</a> (pălării de vrăjitoare și dovleci) și <a href="{easter}">Paște</a> (urechi de iepuraș și ouă uriașe). Stilul Pixel dă un aer de joc video retro.</p>
 <h3>Gândit pentru binele pisicii</h3>
-<p>Un cronometru propune sesiuni de 5, 10 sau 15 minute; la final, animalele obosesc, ca pisica să termine cu o captură. Un contor păstrează capturile ei, ca să le împarți cu prietenii. Sunetele sunt create pe loc și, dacă permiți, microfonul face animalele să tresară la zgomotele din cameră.</p>`,
+<p>Un cronometru propune sesiuni de 5, 10 sau 15 minute; la final, animalele obosesc, ca pisica să termine cu o captură. Un contor păstrează capturile ei, ca să le împarți cu prietenii. Sunetele sunt create pe loc și, dacă permiți, microfonul face animalele să tresară la zgomotele din cameră.</p>
+<h3>Un joc care se adaptează pisicii tale</h3>
+<p>Viteza Auto încetinește animalele când pisica atinge fără să prindă, și le accelerează când prinde tot. Din când în când un animal în trecere traversează ecranul, sau o umbră îi pune pe toți pe fugă. Omizile, lente și ușor de prins, se potrivesc pisoilor și pisicilor bătrâne. Statisticile păstrează capturile pe zile și prada preferată; modul „tabletă pe suport” pornește singur o nouă sesiune una, două sau patru ore mai târziu, pentru zilele în care ești plecat.</p>`,
     },
     water: {
       name: 'Apă',

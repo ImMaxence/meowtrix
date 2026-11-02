@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Saat perayaan, semuanya berdandan sendiri di waktu yang tepat: <a href="{christmas}">Natal</a> (topi Sinterklas dan salju), <a href="{halloween}">Halloween</a> (topi penyihir dan labu), dan <a href="{easter}">Paskah</a> (telinga kelinci dan telur raksasa). Gaya Piksel memberi nuansa gim video retro.</p>
 <h3>Dirancang untuk kesejahteraan kucing</h3>
-<p>Pengatur waktu menawarkan sesi 5, 10, atau 15 menit; di akhir sesi hewan-hewan kelelahan agar kucing berakhir dengan tangkapan. Penghitung menyimpan tangkapannya untuk dibagikan ke teman. Suaranya dibuat secara langsung, dan jika kamu izinkan, mikrofon membuat hewan kaget mendengar suara di ruangan.</p>`,
+<p>Pengatur waktu menawarkan sesi 5, 10, atau 15 menit; di akhir sesi hewan-hewan kelelahan agar kucing berakhir dengan tangkapan. Penghitung menyimpan tangkapannya untuk dibagikan ke teman. Suaranya dibuat secara langsung, dan jika kamu izinkan, mikrofon membuat hewan kaget mendengar suara di ruangan.</p>
+<h3>Permainan yang menyesuaikan diri dengan kucingmu</h3>
+<p>Kecepatan otomatis memperlambat hewan saat kucingmu menyentuh tanpa menangkap, dan mempercepatnya saat ia menangkap semuanya. Sesekali seekor hewan lewat melintasi layar, atau sebuah bayangan membuat semua lari. Ulat, lambat dan mudah ditangkap, cocok untuk anak kucing dan kucing tua. Statistik menyimpan tangkapan per hari dan mangsa favorit; mode “tablet di dudukan” memulai sesi baru sendiri satu, dua, atau empat jam kemudian, untuk hari-hari saat kamu pergi.</p>`,
     },
     water: {
       name: 'Air',

@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>For the holidays everything dresses up on its own at the right time: <a href="{christmas}">Christmas</a> (Santa hats and snow), <a href="{halloween}">Halloween</a> (witch hats and pumpkins) and <a href="{easter}">Easter</a> (bunny ears and giant eggs). The Pixel style gives it a retro video game look.</p>
 <h3>Made with the cat’s wellbeing in mind</h3>
-<p>A timer offers 5, 10 or 15 minute sessions; at the end the animals tire so the cat finishes on a catch. A counter keeps its catches, to share with friends. Sounds are made live and, if you allow it, the microphone makes the animals startle at noises in the room.</p>`,
+<p>A timer offers 5, 10 or 15 minute sessions; at the end the animals tire so the cat finishes on a catch. A counter keeps its catches, to share with friends. Sounds are made live and, if you allow it, the microphone makes the animals startle at noises in the room.</p>
+<h3>A game that adapts to your cat</h3>
+<p>Auto speed slows the animals down when your cat paws without catching, and speeds them up when it catches everything. Now and then a passing animal crosses the screen, or a shadow sends everyone running. Caterpillars, slow and easy to catch, suit kittens and old cats. Statistics keep the catches per day and the favourite prey; the “tablet on a stand” mode starts a new session on its own one, two or four hours later, for the days you are out.</p>`,
     },
     water: {
       name: 'Water',

@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Til højtiderne klæder alt sig ud af sig selv på det rigtige tidspunkt: <a href="{christmas}">jul</a> (nissehuer og sne), <a href="{halloween}">halloween</a> (heksehatte og græskar) og <a href="{easter}">påske</a> (kaninører og kæmpeæg). Pixel-stilen giver et retro-videospilslook.</p>
 <h3>Lavet med kattens trivsel for øje</h3>
-<p>En timer tilbyder runder på 5, 10 eller 15 minutter; til sidst bliver dyrene trætte, så katten slutter med en fangst. En tæller gemmer fangsterne, så de kan deles med venner. Lydene skabes live, og hvis du tillader det, får mikrofonen dyrene til at fare sammen ved lyde i rummet.</p>`,
+<p>En timer tilbyder runder på 5, 10 eller 15 minutter; til sidst bliver dyrene trætte, så katten slutter med en fangst. En tæller gemmer fangsterne, så de kan deles med venner. Lydene skabes live, og hvis du tillader det, får mikrofonen dyrene til at fare sammen ved lyde i rummet.</p>
+<h3>Et spil der tilpasser sig din kat</h3>
+<p>Automatisk hastighed sænker dyrenes fart, når din kat rører uden at fange, og øger den, når den fanger alt. Nu og da krydser et forbipasserende dyr skærmen, eller en skygge sender alle på flugt. Larver, langsomme og nemme at fange, passer til killinger og gamle katte. Statistikken gemmer fangster pr. dag og yndlingsbyttet; tilstanden „tablet på stativ“ starter selv en ny session en, to eller fire timer senere, til de dage du er ude.</p>`,
     },
     water: {
       name: 'Vand',

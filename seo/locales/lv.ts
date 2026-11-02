@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Svētkos viss pats pārģērbjas īstajā laikā: <a href="{christmas}">Ziemassvētki</a> (cepures un sniegs), <a href="{halloween}">Helovīns</a> (raganu cepures un ķirbji) un <a href="{easter}">Lieldienas</a> (zaķa ausis un milzu olas). Pikseļu stils piešķir retro videospēles izskatu.</p>
 <h3>Domāts par kaķa labsajūtu</h3>
-<p>Taimeris piedāvā 5, 10 vai 15 minūšu spēles; beigās dzīvnieki nogurst, lai kaķis beigtu ar lomu. Skaitītājs saglabā lomus, ar kuriem dalīties ar draugiem. Skaņas tiek radītas tiešraidē, un, ja atļausi, mikrofons liks dzīvniekiem sabīties no trokšņiem istabā.</p>`,
+<p>Taimeris piedāvā 5, 10 vai 15 minūšu spēles; beigās dzīvnieki nogurst, lai kaķis beigtu ar lomu. Skaitītājs saglabā lomus, ar kuriem dalīties ar draugiem. Skaņas tiek radītas tiešraidē, un, ja atļausi, mikrofons liks dzīvniekiem sabīties no trokšņiem istabā.</p>
+<h3>Spēle, kas pielāgojas jūsu kaķim</h3>
+<p>Automātiskais ātrums palēnina dzīvniekus, kad kaķis pieskaras, bet nenoķer, un paātrina tos, kad noķer visu. Ik pa laikam pār ekrānu pāriet garāmgājējs dzīvnieks vai ēna visus aizbiedē. Kāpuri, lēni un viegli noķerami, piemēroti kaķēniem un veciem kaķiem. Statistika glabā ķērienus pa dienām un mīļāko medījumu; režīms „planšete statīvā“ pats sāk jaunu sesiju pēc vienas, divām vai četrām stundām, dienām, kad jūs neesat mājās.</p>`,
     },
     water: {
       name: 'Ūdens',

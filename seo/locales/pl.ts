@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Na święta wszystko przebiera się samo we właściwym czasie: <a href="{christmas}">Boże Narodzenie</a> (czapki Mikołaja i śnieg), <a href="{halloween}">Halloween</a> (kapelusze czarownic i dynie) i <a href="{easter}">Wielkanoc</a> (zajęcze uszy i olbrzymie jajka). Styl Piksele nadaje wygląd gry retro.</p>
 <h3>Z myślą o dobrostanie kota</h3>
-<p>Minutnik proponuje sesje po 5, 10 lub 15 minut; na końcu zwierzęta się męczą, by kot skończył zdobyczą. Licznik zapisuje jego zdobycze, którymi można się pochwalić znajomym. Dźwięki powstają na żywo, a jeśli pozwolisz, mikrofon sprawi, że zwierzęta będą podskakiwać na odgłosy w pokoju.</p>`,
+<p>Minutnik proponuje sesje po 5, 10 lub 15 minut; na końcu zwierzęta się męczą, by kot skończył zdobyczą. Licznik zapisuje jego zdobycze, którymi można się pochwalić znajomym. Dźwięki powstają na żywo, a jeśli pozwolisz, mikrofon sprawi, że zwierzęta będą podskakiwać na odgłosy w pokoju.</p>
+<h3>Gra, która dostosowuje się do twojego kota</h3>
+<p>Automatyczna prędkość spowalnia zwierzęta, gdy kot dotyka, ale nie łapie, i przyspiesza je, gdy łapie wszystko. Od czasu do czasu przez ekran przechodzi przypadkowe zwierzę albo cień rozpędza wszystkich. Gąsienice, powolne i łatwe do złapania, nadają się dla kociąt i starych kotów. Statystyki przechowują złapane z każdego dnia i ulubioną zdobycz; tryb „tablet na podstawce” sam rozpoczyna nową sesję godzinę, dwie lub cztery później, na dni, gdy cię nie ma.</p>`,
     },
     water: {
       name: 'Woda',

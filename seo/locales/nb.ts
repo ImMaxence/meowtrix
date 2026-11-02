@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Til høytidene kler alt seg ut av seg selv til rett tid: <a href="{christmas}">jul</a> (nisseluer og snø), <a href="{halloween}">halloween</a> (heksehatter og gresskar) og <a href="{easter}">påske</a> (kaninører og kjempeegg). Pikselstilen gir et retrospill-preg.</p>
 <h3>Laget med kattens velvære i tankene</h3>
-<p>En tidtaker tilbyr økter på 5, 10 eller 15 minutter; mot slutten blir dyrene slitne, så katten avslutter med en fangst. En teller tar vare på fangstene, til å dele med venner. Lydene lages direkte, og hvis du tillater det, får mikrofonen dyrene til å skvette av lyder i rommet.</p>`,
+<p>En tidtaker tilbyr økter på 5, 10 eller 15 minutter; mot slutten blir dyrene slitne, så katten avslutter med en fangst. En teller tar vare på fangstene, til å dele med venner. Lydene lages direkte, og hvis du tillater det, får mikrofonen dyrene til å skvette av lyder i rommet.</p>
+<h3>Et spill som tilpasser seg katten din</h3>
+<p>Automatisk fart bremser dyrene når katten din tar uten å fange, og øker farten når den fanger alt. Nå og da krysser et forbipasserende dyr skjermen, eller en skygge jager alle på flukt. Larver, sakte og lette å fange, passer for kattunger og gamle katter. Statistikken tar vare på fangster per dag og favorittbyttet; modusen «nettbrett på stativ» starter en ny økt av seg selv én, to eller fire timer senere, for dagene du er borte.</p>`,
     },
     water: {
       name: 'Vann',

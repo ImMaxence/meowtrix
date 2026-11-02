@@ -92,7 +92,8 @@ export class Menu {
     this.els.about.classList.toggle('open', about);
     this.els.panel.hidden = about;
     if (!about) this.els.panel.replaceChildren(...this.content());
-    this.fit();
+    // Measured in the next frame, once the browser has laid the rows out anyway.
+    requestAnimationFrame(() => this.fit());
     if (focused) this.els.root.querySelector<HTMLElement>(`[data-focus="${focused}"]`)?.focus();
   }
 

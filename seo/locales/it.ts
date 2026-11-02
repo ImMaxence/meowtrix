@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Per le feste, tutto si veste da solo al momento giusto: <a href="{christmas}">Natale</a> (cappelli e neve), <a href="{halloween}">Halloween</a> (cappelli da strega e zucche) e <a href="{easter}">Pasqua</a> (orecchie da coniglio e uova giganti). Lo stile Pixel dà un’aria da videogioco retrò.</p>
 <h3>Pensato per il benessere del gatto</h3>
-<p>Un timer propone sessioni da 5, 10 o 15 minuti; alla fine gli animali si stancano, così il gatto finisce con una preda. Un contatore tiene il conto delle prede, da condividere con gli amici. I suoni sono creati dal vivo e, se lo permetti, il microfono fa sobbalzare gli animali ai rumori della stanza.</p>`,
+<p>Un timer propone sessioni da 5, 10 o 15 minuti; alla fine gli animali si stancano, così il gatto finisce con una preda. Un contatore tiene il conto delle prede, da condividere con gli amici. I suoni sono creati dal vivo e, se lo permetti, il microfono fa sobbalzare gli animali ai rumori della stanza.</p>
+<h3>Un gioco che si adatta al tuo gatto</h3>
+<p>La velocità Auto rallenta gli animali quando il gatto tocca senza prendere, e li accelera quando prende tutto. Ogni tanto un animale di passaggio attraversa lo schermo, o un’ombra fa scappare tutti. I bruchi, lenti e facili da prendere, vanno bene per gattini e gatti anziani. Le statistiche conservano le prese per giorno e la preda preferita; la modalità «tablet sul supporto» avvia da sola una nuova sessione una, due o quattro ore dopo, per i giorni in cui sei fuori.</p>`,
     },
     water: {
       name: 'Acqua',

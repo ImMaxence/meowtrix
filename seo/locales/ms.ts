@@ -48,7 +48,9 @@ export default {
 </ul>
 <p>Semasa perayaan, semuanya berhias sendiri pada masa yang tepat: <a href="{christmas}">Krismas</a> (topi Santa dan salji), <a href="{halloween}">Halloween</a> (topi ahli sihir dan labu) dan <a href="{easter}">Easter</a> (telinga arnab dan telur gergasi). Gaya Piksel memberi rupa permainan video retro.</p>
 <h3>Direka untuk kesejahteraan kucing</h3>
-<p>Pemasa menawarkan sesi 5, 10 atau 15 minit; pada akhirnya haiwan menjadi letih supaya kucing berakhir dengan tangkapan. Pembilang menyimpan tangkapannya untuk dikongsi dengan rakan. Bunyi dihasilkan secara langsung dan, jika anda benarkan, mikrofon membuatkan haiwan terkejut dengan bunyi di dalam bilik.</p>`,
+<p>Pemasa menawarkan sesi 5, 10 atau 15 minit; pada akhirnya haiwan menjadi letih supaya kucing berakhir dengan tangkapan. Pembilang menyimpan tangkapannya untuk dikongsi dengan rakan. Bunyi dihasilkan secara langsung dan, jika anda benarkan, mikrofon membuatkan haiwan terkejut dengan bunyi di dalam bilik.</p>
+<h3>Permainan yang menyesuaikan diri dengan kucing anda</h3>
+<p>Kelajuan auto memperlahankan haiwan apabila kucing anda menyentuh tanpa menangkap, dan mempercepatkannya apabila ia menangkap semuanya. Sesekali seekor haiwan yang lalu melintasi skrin, atau bayang membuat semua lari. Ulat beluncas, perlahan dan mudah ditangkap, sesuai untuk anak kucing dan kucing tua. Statistik menyimpan tangkapan setiap hari dan mangsa kegemaran; mod “tablet di pendirian” memulakan sesi baharu sendiri satu, dua atau empat jam kemudian, untuk hari anda tiada di rumah.</p>`,
     },
     water: {
       name: 'Air',

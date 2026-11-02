@@ -47,6 +47,8 @@ export class World {
   private viewShort = VIEW_SHORT.medium;
   private maxPixelRatio = 2;
   quality: Quality = 2;
+  /** Something changed while nothing animates (the ground's full texture arrived): draw a frame. */
+  onNeedRender: (() => void) | null = null;
   /** Created the first time the water theme is shown. */
   private water: Water | null = null;
   private ground: GroundTheme = 'stone';
@@ -61,11 +63,6 @@ export class World {
     this.renderer.toneMappingExposure = 0.95;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.35;
-    pmrem.dispose();
 
     this.sky = new THREE.HemisphereLight('#e8f0ff', '#3b3028', 0.7);
     this.scene.add(this.sky);
@@ -88,12 +85,25 @@ export class World {
     this.resize();
   }
 
+  /** The soft studio light reflected by every surface. Costly: its own step of the loading. */
+  buildEnvironment(): void {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.35;
+    pmrem.dispose();
+  }
+
+  /** Compiles every material's shaders ahead of the first picture, in the background where the GPU allows. */
+  compile(): Promise<unknown> {
+    return this.renderer.compileAsync(this.scene, this.camera);
+  }
+
   get maxAnisotropy(): number {
     return this.renderer.capabilities.getMaxAnisotropy();
   }
 
   setGround(theme: GroundTheme): void {
-    const tex = makeGroundTexture(theme);
+    const tex = makeGroundTexture(theme, () => this.onNeedRender?.());
     tex.anisotropy = this.maxAnisotropy;
     tex.repeat.setScalar(GROUND_SIZE / TILE);
     this.groundMat.map = tex;
