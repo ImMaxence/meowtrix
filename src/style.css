@@ -957,6 +957,12 @@ button:focus-visible {
   user-select: text;
 }
 
+/* No `hidden` attribute in the HTML, so that search engines and assistants reading it without
+   JavaScript keep the page's text; with JavaScript, it shows only in its tab (Menu.render). */
+.js .about:not(.open) {
+  display: none;
+}
+
 .about h2 {
   margin: 0 0 8px;
   font-size: 1.15rem;

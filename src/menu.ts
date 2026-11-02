@@ -85,7 +85,7 @@ export class Menu {
     this.renderFetes();
     this.renderTabs();
     const about = this.tab === 'about';
-    this.els.about.hidden = !about;
+    this.els.about.classList.toggle('open', about);
     this.els.panel.hidden = about;
     if (!about) this.els.panel.replaceChildren(...this.content());
     this.fit();

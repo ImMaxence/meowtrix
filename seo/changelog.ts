@@ -20,6 +20,16 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '0.7.0',
+    date: '2026-11-02',
+    summary: 'Easier for AI assistants to read, and to recommend.',
+    improved: [
+      'AI assistants and search engines now get each page’s full text and its questions and answers, even without running the game. Before, most of it was tucked away in the Info tab, where many of them didn’t look.',
+      'Every page also comes in <strong>Markdown</strong>, the plain text AI agents prefer: add index.md to its address (<a href="/en/index.md">/en/index.md</a>), or simply ask for it, as agents do.',
+      'The whole site’s text in one file for assistants: <a href="/llms-full.txt">llms-full.txt</a>.',
+    ],
+  },
+  {
     version: '0.6.1',
     date: '2026-11-02',
     summary: 'A tidier timeline on this page.',
@@ -123,6 +133,7 @@ export function changelogPage(): string {
     <title>What’s new in Meowtrix – Changelog</title>
     <meta name="description" content="${description}" />
     <link rel="canonical" href="${SITE}/changelog/" />
+    <link rel="alternate" type="text/markdown" href="${SITE}/changelog/index.md" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Meowtrix" />

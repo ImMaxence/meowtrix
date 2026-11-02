@@ -113,6 +113,11 @@ ${list('en')}
 
 ${homes}
 
+## Pour les assistants / For assistants
+
+- Chaque page existe aussi en Markdown : son adresse suivie de index.md (${SITE}/en/index.md, ${SITE}/de/water/index.md…), ou la même adresse demandée avec l’en-tête Accept: text/markdown. / Every page is also available as Markdown: its address followed by index.md, or the same address requested with Accept: text/markdown.
+- Tout le texte en un fichier (anglais, français, nouveautés) / The whole text in one file: ${SITE}/llms-full.txt
+
 ## Liens
 
 - Nouveautés de chaque version (en anglais) : ${SITE}/changelog/

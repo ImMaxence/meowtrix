@@ -77,6 +77,12 @@ refuse une langue incomplète).
 `public/robots.txt` autorise les moteurs et les robots des assistants IA, et nginx renvoie une vraie
 erreur 404 pour les adresses inconnues.
 
+Pour les assistants IA : le texte de l'onglet **Infos** est dans le HTML sans attribut `hidden`
+(seul JavaScript le cache hors de son onglet), pour que les outils qui lisent la page sans l'exécuter
+le gardent. Chaque page a aussi une version Markdown à côté d'elle (`/en/index.md`…, écrite par
+`seo/markdown.ts`), que nginx sert à la place du HTML aux requêtes `Accept: text/markdown`, et
+`llms-full.txt` réunit tout le texte en un fichier.
+
 ## Développement
 
 ```bash

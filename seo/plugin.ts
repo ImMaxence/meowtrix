@@ -1,6 +1,7 @@
 import type { Plugin } from 'vite';
 import { langInfo, type Lang } from '../src/langs.ts';
 import { changelogPage, RELEASES } from './changelog.ts';
+import { changelogMarkdown, llmsFull, pageMarkdown } from './markdown.ts';
 import { llmsText, pagePath, PAGES, REPO, SITE, type Page } from './pages.ts';
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -52,6 +53,7 @@ function head(page: Page, version: string): string {
     `<link rel="canonical" href="${url}" />`,
     ...versions(page).map((p) => `<link rel="alternate" hreflang="${hreflang(p.lang)}" href="${SITE}${p.path}" />`),
     `<link rel="alternate" hreflang="x-default" href="${fallback(page)}" />`,
+    `<link rel="alternate" type="text/markdown" href="${url}index.md" />`,
     `<meta name="robots" content="index, follow, max-image-preview:large" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="Meowtrix" />`,
@@ -124,8 +126,8 @@ ${urls.join('\n')}
 
 /**
  * Writes one HTML page per theme and fête and language (/, /eau/, /en/water/, /de/water/…) from
- * index.html, plus /changelog/, sitemap.xml and llms.txt. In the dev server, each path gets its
- * page on the fly.
+ * index.html, each with its Markdown twin (index.md), plus /changelog/, sitemap.xml, llms.txt and
+ * llms-full.txt. In the dev server, each path gets its HTML page on the fly.
  */
 export function seoPages(version: string): Plugin {
   let serve = false;
@@ -158,8 +160,11 @@ export function seoPages(version: string): Plugin {
         const html = renderPage(template, page, version);
         if (page.path === '/') index.source = html;
         else this.emitFile({ type: 'asset', fileName: `${page.path.slice(1)}index.html`, source: html });
+        this.emitFile({ type: 'asset', fileName: `${page.path.slice(1)}index.md`, source: pageMarkdown(page) });
       }
       this.emitFile({ type: 'asset', fileName: 'changelog/index.html', source: changelogPage() });
+      this.emitFile({ type: 'asset', fileName: 'changelog/index.md', source: changelogMarkdown() });
+      this.emitFile({ type: 'asset', fileName: 'llms-full.txt', source: llmsFull(version) });
       this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap(new Date().toISOString().slice(0, 10)) });
       this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llmsText(version) });
     },

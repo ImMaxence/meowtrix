@@ -7,6 +7,30 @@ Sur le site, la page [/changelog/](https://meowtrix.mbonnici.fr/changelog/) raco
 anglais, pour les joueurs ; elle est écrite à partir de `seo/changelog.ts`. À chaque nouvelle version,
 on complète les deux : le build refuse un numéro de version sans entrée dans `seo/changelog.ts`.
 
+## 0.7.0 — 2 novembre 2026
+
+Référencement pour les assistants IA. Rien ne change pour les joueurs.
+
+### Ajouté
+
+- **Une version Markdown de chaque page** (`/index.md`, `/en/index.md`, `/de/water/index.md`…,
+  264 pages plus `/changelog/index.md`), avec titre, description, texte, « comment jouer », questions
+  fréquentes et liens. Chaque page HTML la signale (`<link rel="alternate" type="text/markdown">`),
+  et nginx la sert à la place du HTML quand la requête demande `Accept: text/markdown`, comme le
+  fait la fonction « Markdown for Agents » de Cloudflare (réservée à l'offre Pro).
+- **`llms-full.txt`** : tout le texte du site en un fichier (pages en anglais, puis en français,
+  puis les nouveautés). `llms.txt` signale ce fichier et les versions Markdown.
+
+### Modifié
+
+- **Le texte de chaque page est lisible sans JavaScript.** L'onglet Infos (présentation, comment
+  jouer, questions fréquentes) était caché dans le HTML par l'attribut `hidden`, que beaucoup
+  d'outils de lecture des assistants ignorent : un extracteur de type « mode lecture » ne gardait
+  que 66 caractères de la page anglaise, contre 3 869 maintenant. Avec JavaScript, le texte reste
+  dans son onglet comme avant (classe `js` posée dans le `<head>`, classe `open` sur l'onglet).
+- nginx envoie `charset=utf-8` pour tous les textes (`llms.txt` partait sans), et `Vary: Accept`
+  sur les pages, qui répondent en HTML ou en Markdown selon la demande.
+
 ## 0.6.1 — 2 novembre 2026
 
 ### Corrigé
