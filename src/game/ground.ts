@@ -277,8 +277,14 @@ function paint(theme: GroundTheme, size: number): HTMLCanvasElement {
 }
 
 /** A seamless ground tile. */
+const textures = new Map<GroundTheme, THREE.CanvasTexture>();
+
+/** Painted once per ground and kept: switching back is free, and nothing must dispose of it. */
 export function makeGroundTexture(theme: GroundTheme): THREE.CanvasTexture {
+  const kept = textures.get(theme);
+  if (kept) return kept;
   const tex = new THREE.CanvasTexture(paint(theme, 512));
+  textures.set(theme, tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   return tex;

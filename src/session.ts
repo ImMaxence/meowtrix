@@ -1,3 +1,4 @@
+import type { AnimalKey } from './catalog';
 import { clamp } from './game/math';
 
 const STATS_KEY = 'meowtrix.stats';
@@ -8,21 +9,38 @@ const TIRE_RAMP = 30;
 /** Once time is up, the session ends just after the next catch, or after GRACE seconds anyway. */
 const END_DELAY = 1.2;
 const GRACE = 45;
+/** Days of history kept. */
+const DAYS_KEPT = 14;
 
 /** Kept across sessions on this device. */
 export interface Stats {
   total: number;
   /** Most catches in one session. */
   best: number;
+  /** Catches per day (YYYY-MM-DD, local), the last two weeks. */
+  days: Record<string, number>;
+  /** Catches per species. */
+  prey: Partial<Record<AnimalKey, number>>;
+}
+
+/** Local date as YYYY-MM-DD. */
+export function dayKey(date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
 }
 
 function loadStats(): Stats {
+  const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : 0);
+  const counts = (v: unknown): Record<string, number> => {
+    const out: Record<string, number> = {};
+    if (v && typeof v === 'object') for (const [k, c] of Object.entries(v)) if (n(c)) out[k] = n(c);
+    return out;
+  };
   try {
     const saved = JSON.parse(localStorage.getItem(STATS_KEY) ?? '{}') as Partial<Stats>;
-    const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : 0);
-    return { total: n(saved.total), best: n(saved.best) };
+    return { total: n(saved.total), best: n(saved.best), days: counts(saved.days), prey: counts(saved.prey) };
   } catch {
-    return { total: 0, best: 0 };
+    return { total: 0, best: 0, days: {}, prey: {} };
   }
 }
 
@@ -65,12 +83,17 @@ export class Session {
     return Math.max(0, Math.ceil((this.limit - this.elapsed) / 60));
   }
 
-  caught(): void {
+  caught(key: AnimalKey): void {
     this.catches++;
-    this.stats.total++;
-    this.stats.best = Math.max(this.stats.best, this.catches);
+    const s = this.stats;
+    s.total++;
+    s.best = Math.max(s.best, this.catches);
+    s.prey[key] = (s.prey[key] ?? 0) + 1;
+    const today = dayKey();
+    s.days[today] = (s.days[today] ?? 0) + 1;
+    for (const day of Object.keys(s.days).sort().slice(0, -DAYS_KEPT)) delete s.days[day];
     try {
-      localStorage.setItem(STATS_KEY, JSON.stringify(this.stats));
+      localStorage.setItem(STATS_KEY, JSON.stringify(s));
     } catch {
       // Not kept; fine.
     }

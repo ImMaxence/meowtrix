@@ -1,7 +1,8 @@
-// Offline support: pages are fetched network-first (so updates arrive),
-// everything else is served from the cache once downloaded.
-const CACHE = 'meowtrix-v2';
-const CORE = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon.svg'];
+// Offline support. Written to dist/sw.js by seo/plugin.ts, which fills in the version and the
+// built files: they are all cached at install, so the second visit is instant and works offline.
+// Pages are fetched network-first (so updates arrive); everything else comes from the cache.
+const CACHE = 'meowtrix-__VERSION__';
+const CORE = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon.svg', ...__ASSETS__];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)).then(() => self.skipWaiting()));

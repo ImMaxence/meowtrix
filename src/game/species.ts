@@ -17,6 +17,8 @@ export const SQUIRREL = species(1.1, 0.12, [0.9, 2], 3.6, 0.15, 0.2, 0.4, 0.2);
 export const ROACH = species(0.24, 0.035, [0.8, 2.2], 4, 0.6, 0.7, 0.05, 0);
 export const BEETLE = species(0.22, 0.06, [0.18, 0.45], 0.9, 0.25, 0.1, 0.2, 0);
 export const GRASSHOPPER = { ...species(0.26, 0.06, [0.6, 1.3], 4.5, 0.1, 0, 0.35, 0.35), callOnDisplay: true };
+/** Slow everywhere, even when scared: the easy prey. */
+export const CATERPILLAR = species(0.3, 0.05, [0.07, 0.18], 0.45, 0.35, 0, 0.3, 0);
 
 export const GOLDFISH = species(0.36, 0, [0.25, 0.7], 2.4, 0.35, 0, 0.25, 0.55);
 export const KOI = species(0.85, 0, [0.2, 0.5], 2, 0.25, 0, 0.35, 0.45);

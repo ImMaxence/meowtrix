@@ -7,6 +7,107 @@ Sur le site, la page [/changelog/](https://meowtrix.mbonnici.fr/changelog/) raco
 anglais, pour les joueurs ; elle est écrite à partir de `seo/changelog.ts`. À chaque nouvelle version,
 on complète les deux : le build refuse un numéro de version sans entrée dans `seo/changelog.ts`.
 
+## 0.9.0 — 2 novembre 2026
+
+Le jeu s'adapte au chat, le surprend, et la tablette peut jouer toute seule.
+
+### Ajouté
+
+- **Chenilles** (groupe « Petites bêtes ») : lentes même quand elles ont peur (`CATERPILLAR` dans
+  `species.ts`, fuite à 0,45), pour les chatons et les vieux chats. Corps segmenté lofé sur une
+  colonne très souple (`src/game/bug/caterpillar.ts`), onde de contraction qui parcourt le corps,
+  petites pattes de chaque côté, avant qui se dresse. Trois robes : verte, rayée (monarque), laineuse.
+- **Événements pendant le jeu** (`Game.updateEvents`, toutes les 50 à 130 s, menu fermé et hors
+  fatigue) : un **visiteur** d'une espèce du thème absente de la liste entre par le bord, reste 25 à
+  50 s et repart (`Brain.arrive` / `leave` / `gone`) ; ou l'**ombre** de quelque chose qui vole
+  passe sur le sol (`src/game/shadow.ts`) et fait fuir tout le monde quand elle est au-dessus.
+- **Éclat de prise** : une gerbe d'étincelles là où la patte attrape un animal
+  (`src/game/burst.ts`, points additifs). La prise connaît maintenant son espèce et sa position
+  (`Game.caught(key, x, y, z)`, `onCatch(key)`).
+- **Vitesse Auto** (par défaut pour les nouveaux venus) : toutes les 30 s de jeu, beaucoup de
+  touchers sans prise → les animaux ralentissent (jusqu'à 0,6), la plupart des touchers une prise →
+  ils accélèrent (jusqu'à 1,45) (`Game.weighAuto`). Lent / normal / rapide restent.
+- **Aléatoire** en haut de l'onglet Animaux : thème, deux ou trois espèces, robes, sol et
+  cachettes au hasard (`surprise` dans `main.ts`).
+- **Compteur à l'écran** pendant le jeu (`#hud`, en haut à gauche, discret) : prises et minutes
+  restantes ; interrupteur dans Réglages (`hud`).
+- **Tablette posée** (`rest`, 1 h / 2 h / 4 h, visible avec une durée de séance) : à la fin de la
+  séance, écran noir avec l'heure de la prochaine (`#rest`), rendu arrêté, puis nouvelle séance
+  toute seule. L'appui long ouvre toujours le menu.
+- **Statistiques** en haut de Réglages dès la première prise : total, meilleure séance, proie
+  préférée, barres des 7 derniers jours. `Session.stats` garde maintenant les prises par jour
+  (14 jours) et par espèce.
+- **Partage en image** : une carte carrée 1080 px (`src/share-card.ts`, canvas 2D) avec le nom du
+  chat, le score, les animaux et l'adresse du site, envoyée avec le texte quand le navigateur
+  accepte les fichiers (`navigator.canShare`) ; sinon le texte va dans le presse-papiers et l'image
+  dans les téléchargements.
+- **Tests** (Vitest, `npm test`, `tests/`) : dates des fêtes, migration des réglages sauvegardés,
+  aller-retour des liens de partage. `fromSaved` est exporté pour cela.
+
+### Modifié
+
+- **Onglet Animaux** : les espèces présentes d'abord, en cartes ; les autres dans une grille
+  d'icônes « Ajouter un animal » (un tap en met une). Plus de titres de groupe.
+- **Nom du chat** et **Tablette posée** n'apparaissent qu'avec une durée de séance.
+- **Qualité adaptative dans les deux sens** (`World.setQuality`, 3 niveaux : ratio de pixels 1 /
+  1,5 / 2, ombres 1024 / 1536 / 2048) : les écrans tactiles démarrent au niveau moyen ; pendant le
+  jeu, la cadence est mesurée jusqu'à trois fois et le niveau monte ou descend d'un cran.
+- **Menu ouvert : une vingtaine d'images par seconde** au lieu de 60 (`IDLE_FRAME_MS`), la scène
+  n'étant qu'un fond flouté.
+- **Textures des sols en cache** (`makeGroundTexture`) : peintes une fois, plus jamais libérées.
+- **Service worker** : `public/sw.js` devient `seo/sw.js`, écrit dans `dist/` par `seo/plugin.ts`
+  avec la liste des fichiers construits et la version comme nom de cache. Tout est mis en cache à
+  l'installation : deuxième visite instantanée et hors ligne.
+
+### Nouvelles chaînes (44 langues)
+
+`speed_auto`, `speed_autoHelp`, `addAnimal`, `surprise`, `rest`, `restHelp`, `rest_off`,
+`nextSession`, `hud`, `hudHelp`, `stats`, `bestSession`, `favoritePrey`, `last7days`,
+`caterpillars`, `caterpillars_desc`, `caterpillars_green`, `caterpillars_striped`,
+`caterpillars_woolly`.
+
+## 0.8.0 — 2 novembre 2026
+
+Un menu plus simple et fait pour le téléphone, qui s'ouvre tout de suite.
+
+### Ajouté
+
+- **Bouton « Rien »** pour les fêtes : aucune décoration, même en saison. Le réglage se fait entre
+  Auto, Rien et une fête ; Auto ne se désactivait plus qu'en le touchant une seconde fois, ce qu'il
+  fallait deviner. Traduit dans les 44 langues (`fete_none`, `fete_noneHelp`).
+
+### Modifié
+
+- **Le menu s'affiche avant la scène 3D.** Jusqu'ici tout se construisait d'un bloc avant le
+  premier dessin du menu : moteur de rendu, texture du sol, animaux, tenues de la fête, soit
+  2,5 secondes mesurées dans Chrome sans accélération, pendant lesquelles on voyait un panneau vide
+  et un bouton vert sans texte. Maintenant le menu est dessiné dès que sa langue est chargée, puis la
+  scène se construit en quatre étapes (`boot` dans `main.ts`), avec une image entre chaque pour
+  que le menu réponde ; le bouton Jouer indique « Chargement… » (clé `loading`, 44 langues) et se
+  remplit à chaque étape. Un réglage changé pendant ce temps est appliqué à la fin
+  (`changedWhileLoading`). La scène apparaît en fondu derrière le menu à sa première image.
+- **Avant même le script**, les rangées du menu et le contenu de l'onglet se montrent en
+  emplacements qui respirent, et le bouton Jouer porte une patte, le temps que le code arrive.
+- **La rangée des fêtes quitte le haut du menu** : Auto, Rien, Noël, Halloween et Pâques sont
+  maintenant une rubrique « Fête » de l'onglet Décor, entre les cachettes et la taille. Le haut du
+  menu passe de douze boutons à sept (trois thèmes, quatre onglets).
+- **Menu sur téléphone** (moins de 560 px de large, ou de haut) : sur un écran de 360 × 640, la
+  liste n'avait plus qu'une soixantaine de pixels entre l'en-tête, les rangées de boutons et le pied
+  du menu. Maintenant tout le panneau défile d'un bloc : les onglets restent collés en haut, le
+  bouton Jouer en bas (`.play-bar`, nouveau dans `index.html`). Le pied du menu passe en
+  `display: contents` pour que ses éléments se placent un par un : le compteur de prises remonte
+  sous l'en-tête (ou, sans prise, Partager descend avec le reste), le conseil de sécurité, GitHub,
+  la version et « Signaler un problème » viennent après le contenu de l'onglet.
+- En portrait, le panneau prend tout l'écran (sans bord ni coins arrondis, avec les marges des
+  encoches), et les cartes des animaux sont plus serrées ; les robes prennent toute la largeur.
+- Changer d'onglet ou de thème remonte au début de l'onglet, sans faire réapparaître l'en-tête
+  (`Menu.toTop`).
+
+### Pour les développeurs
+
+- three.js est dans son propre fichier (`three-*.js`, `manualChunks` dans `vite.config.ts`) :
+  il reste en cache d'une version de Meowtrix à l'autre, et seul le code du jeu est retéléchargé.
+
 ## 0.7.0 — 2 novembre 2026
 
 Référencement pour les assistants IA. Rien ne change pour les joueurs.

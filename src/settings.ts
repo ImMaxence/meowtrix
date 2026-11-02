@@ -5,9 +5,15 @@ import type { RenderStyle, ViewSize } from './game/world';
 import { detectLang } from './i18n';
 import { LANG_CODES, type Lang } from './langs';
 
-export type Speed = 'slow' | 'normal' | 'fast';
+/** 'auto' follows how the cat does (see Game.weighAuto). */
+export type Speed = 'auto' | 'slow' | 'normal' | 'fast';
+export const SPEEDS: readonly Speed[] = ['auto', 'slow', 'normal', 'fast'];
 
-export const SPEED_FACTOR: Record<Speed, number> = { slow: 0.6, normal: 1, fast: 1.45 };
+export const SPEED_FACTOR: Record<Speed, number> = { auto: 1, slow: 0.6, normal: 1, fast: 1.45 };
+
+/** Hours between two automatic sessions on a tablet left on its stand; 0 for none. */
+export type RestHours = 0 | 1 | 2 | 4;
+export const REST_HOURS: readonly RestHours[] = [0, 1, 2, 4];
 
 /** Length of a play session in minutes; 0 for no limit. */
 export type SessionLength = 0 | 5 | 10 | 15;
@@ -33,6 +39,10 @@ export interface Settings {
   style: RenderStyle;
   speed: Speed;
   session: SessionLength;
+  /** With a timed session: the screen rests, then a new session starts on its own. */
+  rest: RestHours;
+  /** Catches and time left in a corner of the screen while playing. */
+  hud: boolean;
   /** Used in the catch count and the shared message; may be empty. */
   catName: string;
   /** Sound volume, 0 (off) … 1 (loudest). */
@@ -60,7 +70,7 @@ const obj = (v: unknown): Saved => (v && typeof v === 'object' ? (v as Saved) : 
 export const themeTotal = (s: Settings, theme: Theme): number => SPECIES[theme].reduce((n, sp) => n + s.animals[sp.key], 0);
 
 /** Settings from what was saved, with defaults for anything missing or invalid. */
-function fromSaved(saved: Saved): Settings {
+export function fromSaved(saved: Saved): Settings {
   const animals = obj(saved.animals), colors = obj(saved.colors), ground = obj(saved.ground), covers = obj(saved.covers);
   // Earlier versions saved the land animals, skin, ground and covers flat.
   const legacy: Saved = { lizards: saved.lizards ?? saved.count, mice: saved.mice, flies: saved.flies };
@@ -77,8 +87,10 @@ function fromSaved(saved: Saved): Settings {
     covers: {} as Record<Theme, CoverKind[]>,
     size: oneOf(saved.size, ['small', 'medium', 'large'] as const, 'medium'),
     style: oneOf(saved.style, STYLES, 'classic'),
-    speed: oneOf(saved.speed, ['slow', 'normal', 'fast'] as const, 'normal'),
+    speed: oneOf(saved.speed, SPEEDS, 'auto'),
     session: oneOf(saved.session, SESSION_LENGTHS, 0),
+    rest: oneOf(saved.rest, REST_HOURS, 0),
+    hud: oneOf(saved.hud, [true, false], true),
     catName: typeof saved.catName === 'string' ? saved.catName.slice(0, CAT_NAME_MAX) : '',
     // Earlier versions only had sound on or off.
     volume: typeof saved.volume === 'number' && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : saved.sound === false ? 0 : 0.7,
@@ -115,7 +127,7 @@ export function loadSettings(): Settings {
 /** Back to a single green lizard on stone, keeping the owner's preferences (language, volume, mic, vibration, session, cat's name). */
 export function resetSettings(s: Settings): void {
   Object.assign(s, fromSaved({
-    lang: s.lang, volume: s.volume, mic: s.mic, vibration: s.vibration, session: s.session, catName: s.catName,
+    lang: s.lang, volume: s.volume, mic: s.mic, vibration: s.vibration, session: s.session, catName: s.catName, hud: s.hud,
   }));
 }
 

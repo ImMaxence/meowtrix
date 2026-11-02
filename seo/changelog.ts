@@ -20,6 +20,44 @@ export interface Release {
 
 export const RELEASES: readonly Release[] = [
   {
+    version: '0.9.0',
+    date: '2026-11-02',
+    summary: 'A game that adapts to your cat, surprises, caterpillars, and a tablet that plays on its own.',
+    added: [
+      '<strong>Caterpillars</strong>: slow, soft and easy to catch, for kittens and old cats. Green, striped like a monarch’s, or woolly.',
+      '<strong>Surprises while the cat plays</strong>: now and then an animal that isn’t in your list wanders in for a minute, or the shadow of something flying over sweeps across and scares everyone.',
+      '<strong>A little burst of sparks</strong> where a paw lands on an animal, so you can see the catch too.',
+      '<strong>Surprise me</strong>: one tap for a random scene, animals, colours, ground and hiding spots.',
+      '<strong>A counter on the screen</strong> while the cat plays: catches, and minutes left. It can be turned off in Settings.',
+      '<strong>Tablet on a stand</strong>: with a timed session, the screen rests when it ends and a new session starts on its own one, two or four hours later. For the days you are out.',
+      '<strong>Statistics</strong> in Settings: catches in all, the best session, the favourite prey and the last seven days.',
+      '<strong>Share a picture</strong>: the Share button now sends a card with your cat’s name, its score and its prey, where the device allows it.',
+    ],
+    improved: [
+      '<strong>Speed is now Auto by default</strong>: if your cat paws without catching, the animals slow down; if it catches everything, they speed up. Slow, normal and fast are still there.',
+      '<strong>The Animals tab is shorter</strong>: the animals on screen come first, the others are a grid of icons to add with a tap.',
+      'The cat’s name and the stand mode only show when a session length is chosen, where they matter.',
+      'Phones and tablets start with a slightly lighter picture and get the full one if they keep up; slow devices get a lighter one. Behind the open menu, the scene runs at a few frames a second to save the battery.',
+      'Changing the ground is instant the second time: each ground is painted once.',
+      'The second visit is instant and works offline: everything is downloaded the first time.',
+    ],
+  },
+  {
+    version: '0.8.0',
+    date: '2026-11-02',
+    summary: 'A simpler menu that opens at once, made for phones too.',
+    added: [
+      'A <strong>None</strong> choice for the holidays: no Christmas, Halloween or Easter decorations, even in season.',
+    ],
+    improved: [
+      '<strong>The menu opens right away.</strong> It used to wait for the whole 3D scene to be built, a few seconds on a phone, showing an empty panel meanwhile. Now the menu comes first and the scene is built behind it; the Play button fills up as it goes.',
+      '<strong>Fewer buttons at the top.</strong> The holiday row (Auto, None, Christmas, Halloween, Easter) has moved into the Scenery tab, under its own heading, leaving the three themes and the four tabs.',
+      '<strong>The menu on phones</strong> fills the screen and scrolls as one page, instead of squeezing the list into a small box: the tabs stay at the top and the Play button at the bottom. Cards are tighter, and the colour swatches use the full width.',
+      'Phones on their side get the same scrolling menu, so nothing is out of reach on a short screen.',
+      'The game’s engine is cached separately, so updates to Meowtrix download less.',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-11-02',
     summary: 'Easier for AI assistants to read, and to recommend.',

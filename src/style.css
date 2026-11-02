@@ -61,6 +61,12 @@ button:focus-visible {
   height: 100%;
   display: block;
   touch-action: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.scene-ready #scene {
+  opacity: 1;
 }
 
 .vignette {
@@ -407,75 +413,10 @@ button:focus-visible {
   font-size: 1.3rem;
 }
 
-.fetes {
-  display: flex;
-  gap: 6px;
-  margin: 0 16px 10px;
-}
-
-.fete {
-  display: flex;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.fete[aria-pressed='true'] {
-  color: var(--text);
-}
-
-.fete-christmas[aria-pressed='true'] {
-  border-color: #ff6b6b;
-  background: rgba(220, 40, 50, 0.22);
-}
-
-.fete-halloween[aria-pressed='true'] {
-  border-color: #ffa040;
-  background: rgba(255, 140, 30, 0.2);
-}
-
-.fete-easter[aria-pressed='true'] {
-  border-color: #f5a8d0;
-  background: rgba(240, 160, 210, 0.2);
-}
-
-.fete-auto {
-  flex: none;
-}
-
-.fete-auto[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-/* On because it is the season (Auto), not chosen. */
-.fete.is-auto {
-  border-style: dashed;
-}
-
-.fete-icon {
-  font-size: 1.1rem;
-}
-
-@media (max-width: 440px) {
-  .fete:not(.fete-auto) .fete-label {
-    display: none;
-  }
-}
-
 /* --- Tabs --------------------------------------------------------------- */
 
 /* Chinese, Japanese and Korean words have no spaces to wrap at: keep each label whole, like a word. */
-:is(:lang(ja), :lang(zh), :lang(ko)) :is(.theme, .fete, .tab) {
+:is(:lang(ja), :lang(zh), :lang(ko)) :is(.theme, .tab) {
   word-break: keep-all;
 }
 
@@ -489,12 +430,6 @@ button:focus-visible {
 
 .tight > .tab {
   font-size: 0.78rem;
-}
-
-.tight > .fete {
-  gap: 4px;
-  padding-inline: 6px;
-  font-size: 0.82rem;
 }
 
 .tighter > * {
@@ -748,6 +683,31 @@ button:focus-visible {
 
 .chip-icon {
   margin-inline-end: 6px;
+}
+
+/* Holiday chips: each in its own colours; dashed when on because it is the season (Auto). */
+.fete-christmas[aria-pressed='true'] {
+  border-color: #ff6b6b;
+  background: rgba(220, 40, 50, 0.22);
+}
+
+.fete-halloween[aria-pressed='true'] {
+  border-color: #ffa040;
+  background: rgba(255, 140, 30, 0.2);
+}
+
+.fete-easter[aria-pressed='true'] {
+  border-color: #f5a8d0;
+  background: rgba(240, 160, 210, 0.2);
+}
+
+.fete-none[aria-pressed='true'] {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.chip.is-auto {
+  border-style: dashed;
 }
 
 .opt-help {
@@ -1110,6 +1070,57 @@ button:focus-visible {
   transform: scale(0.98);
 }
 
+/* While the scene is built (main.ts boot): a bar fills from left to right, in four steps. */
+.play.is-loading {
+  --progress: 0%;
+  background: linear-gradient(90deg, var(--accent) var(--progress), rgba(182, 243, 107, 0.3) var(--progress));
+  box-shadow: none;
+  opacity: 1;
+  cursor: progress;
+}
+
+[dir='rtl'] .play.is-loading {
+  background: linear-gradient(270deg, var(--accent) var(--progress), rgba(182, 243, 107, 0.3) var(--progress));
+}
+
+/* Before the script runs, the rows it will fill breathe as faint placeholders, and Play shows a
+   paw; the footer's texts are empty and stay out of the way. */
+.menu:not(.ready) :is(.themes, .tabs) {
+  min-height: 48px;
+  border-radius: var(--radius);
+  background: var(--card);
+  animation: breathe 1.4s ease-in-out infinite;
+}
+
+.menu:not(.ready) .tab-panel::before,
+.menu:not(.ready) .tab-panel::after {
+  content: '';
+  display: block;
+  height: 76px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  animation: breathe 1.4s ease-in-out infinite;
+}
+
+.menu:not(.ready) .tab-panel::after {
+  animation-delay: 0.2s;
+}
+
+.play:empty::before {
+  content: '🐾';
+}
+
+:is(.share, .report-link, .note):empty {
+  visibility: hidden;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 .foot-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1220,6 +1231,184 @@ a:focus-visible {
   }
 }
 
+/* Phones, upright or on their side: there is no room for a list squeezed between a tall header
+   and footer, so the whole panel scrolls. The tabs stay at the top and Play at the bottom; the
+   catch counter comes up under the header, the small print goes after the tab's content. */
+@media (max-width: 560px), (max-height: 560px) {
+  .panel {
+    position: relative;
+    height: 100%;
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .panel > *,
+  .panel-foot > * {
+    flex: none;
+  }
+
+  .panel-head {
+    order: 1;
+  }
+
+  .summary {
+    order: 2;
+  }
+
+  .themes {
+    order: 4;
+  }
+
+  .tabs {
+    order: 6;
+  }
+
+  .tab-panel {
+    order: 7;
+    overflow: visible;
+  }
+
+  /* Its children join the panel's own column, to be placed one by one. */
+  .panel-foot {
+    display: contents;
+  }
+
+  .stats-row {
+    order: 3;
+    margin: 0 16px 10px;
+  }
+
+  /* No catches yet: Share alone isn't worth a row up there. */
+  .stats-row:has(> .stats[hidden]) {
+    order: 8;
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  .fatal,
+  .foot-actions,
+  .panel-foot > .note,
+  .foot-links {
+    order: 8;
+    margin-inline: 16px;
+    text-align: center;
+  }
+
+  .foot-links {
+    margin-block: 14px 4px;
+  }
+
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin: 0;
+    padding: 6px 16px;
+    border-radius: 0;
+    border-bottom: 1px solid var(--line);
+    background: rgba(12, 17, 14, 0.97);
+  }
+
+  .tab-panel {
+    padding: 14px 16px;
+  }
+
+  .play-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    order: 9;
+    margin-top: 6px;
+    padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: rgba(12, 17, 14, 0.97);
+  }
+
+  .play {
+    padding: 13px;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 18px rgba(182, 243, 107, 0.22);
+  }
+}
+
+/* Phones upright: the panel fills the screen, edge to edge, and everything is a little tighter. */
+@media (max-width: 560px) {
+  .menu {
+    padding: 0;
+  }
+
+  .panel {
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: rgba(14, 20, 17, 0.9);
+    box-shadow: none;
+  }
+
+  .panel-head {
+    align-items: center;
+    padding: max(14px, env(safe-area-inset-top)) 16px 12px;
+  }
+
+  .logo {
+    font-size: 2rem;
+  }
+
+  .tagline {
+    margin-top: 4px;
+    font-size: 0.85rem;
+  }
+
+  .themes {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .theme {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .species-row {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .species-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 1.5rem;
+  }
+
+  .species-name {
+    font-size: 1rem;
+  }
+
+  .skins {
+    padding: 0 10px 12px;
+  }
+
+  .swatches {
+    gap: 8px;
+  }
+
+  .cards {
+    gap: 6px;
+  }
+
+  .card {
+    padding: 6px;
+    font-size: 0.88rem;
+  }
+
+  .chip {
+    padding: 8px 10px;
+  }
+}
+
 /* Short landscape screens (phones on their side): tighter header. */
 @media (max-height: 520px) {
   .panel-head {
@@ -1317,4 +1506,175 @@ a:focus-visible {
 .toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* Catches and time left, faint, in the corner opposite the hold button. */
+.hud {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* --- Tablet on its stand ------------------------------------------------- */
+
+.rest {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  background: #000;
+  color: rgba(255, 255, 255, 0.35);
+  text-align: center;
+}
+
+.rest-paw {
+  margin: 0;
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.rest-text {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Animals tab: surprise and the animals to add ----------------------- */
+
+.surprise {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.surprise:active {
+  transform: scale(0.99);
+}
+
+.surprise-icon {
+  font-size: 1.3rem;
+}
+
+.add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.add-chip {
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  padding: 10px 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.add-chip:hover,
+.add-chip:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.add-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.add-name {
+  overflow-wrap: anywhere;
+}
+
+/* --- Statistics ----------------------------------------------------------- */
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.stat {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stat strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  height: 92px;
+  margin-top: 8px;
+}
+
+.bar-col {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 4px;
+  min-width: 0;
+  text-align: center;
+}
+
+.bar {
+  --h: 3%;
+  align-self: end;
+  height: var(--h);
+  border-radius: 6px 6px 3px 3px;
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.bar.is-empty {
+  background: var(--line);
+}
+
+.bar-n,
+.bar-day {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-n {
+  min-height: 1em;
 }

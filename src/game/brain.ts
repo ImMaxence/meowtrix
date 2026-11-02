@@ -165,6 +165,21 @@ export class Brain {
     }
   }
 
+  /** A visitor: starts off screen and walks in. */
+  arrive(): void {
+    this.go('enter');
+  }
+
+  /** A visitor going home: walks off screen (see `gone`). */
+  leave(): void {
+    if (this.state !== 'exit' && this.state !== 'hidden') this.go('exit');
+  }
+
+  /** Off screen, after leave(). */
+  get gone(): boolean {
+    return this.state === 'hidden';
+  }
+
   dispose(): void {
     this.releaseCover();
   }

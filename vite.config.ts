@@ -10,7 +10,13 @@ export default defineConfig({
   build: {
     // Smart TVs often ship older browser engines.
     target: 'es2020',
-    // three.js alone is ~550 kB minified; a single chunk is fine for this app.
+    // three.js alone is ~550 kB minified: in its own chunk, it stays cached from one version of
+    // Meowtrix to the next.
     chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => (id.includes('node_modules/three/') ? 'three' : undefined),
+      },
+    },
   },
 });

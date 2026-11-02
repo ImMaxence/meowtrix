@@ -4,19 +4,23 @@ import { Voice } from './audio/voice';
 import {
   enterFullscreen, exitFullscreen, isFullscreen, isIOS, isStandalone, registerServiceWorker, ScreenWakeLock,
 } from './device';
-import { resolveFete, type Fete } from './catalog';
+import { COVERS, GROUNDS, resolveFete, SPECIES, THEMES, type Fete } from './catalog';
 import { Game } from './game/game';
 import { PointerInput } from './game/input';
-import { World } from './game/world';
+import { World, type Quality } from './game/world';
 import { currentLang, plural, setLang, t, tf } from './i18n';
 import { langHome } from './langs';
 import { Menu } from './menu';
 import { applyPreset, presetQuery } from './preset';
 import { Session } from './session';
 import { loadSettings, resetSettings, saveSettings, SPEED_FACTOR, type Settings } from './settings';
+import { shareCard } from './share-card';
 
 const HOLD_MS = 1400;
 const REPO = 'https://github.com/ImMaxence/meowtrix';
+const SITE = 'meowtrix.mbonnici.fr';
+/** While the menu is open the scene is only a blurred backdrop: this many ms between frames. */
+const IDLE_FRAME_MS = 48;
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const canvas = $<HTMLCanvasElement>('#scene');
@@ -30,6 +34,9 @@ const installHint = $('#install-hint');
 const statsEl = $('#stats');
 const shareBtn = $<HTMLButtonElement>('#share');
 const summaryEl = $('#summary');
+const hudEl = $('#hud');
+const restEl = $('#rest');
+const restText = $('#rest-text');
 
 const settings = loadSettings();
 // A landing page (/eau/, /noel/…) or a shared link sets up its scene; the link is then cleaned
@@ -64,32 +71,58 @@ function createWorld(): World | null {
   }
 }
 
-// The menu is drawn once its language is loaded, so it never flashes in another one.
-void setLang(settings.lang).then(() => {
-  const world = createWorld();
-  if (world) start(world);
-});
+/** Lets the browser paint (and answer a tap) between two heavy steps. */
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
-function start(world: World): void {
-  world.setViewSize(settings.size);
-  world.setStyle(settings.style);
+const pickOne = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)];
 
+/** "1 h 05" or "12 min". */
+function timeLeft(ms: number): string {
+  const minutes = Math.max(1, Math.ceil(ms / 60_000));
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
+}
+
+// The menu is drawn once its language is loaded, so it never flashes in another one. The 3D scene
+// comes after, step by step (see boot): building it takes seconds on a phone, and the menu must
+// not wait for it.
+void setLang(settings.lang).then(start);
+
+function start(): void {
   const voice = new Voice();
-  const game = new Game(world, voice);
-  game.speed = SPEED_FACTOR[settings.speed];
+  // Null until boot() is done; the menu works before that and the scene catches up at the end.
+  let world: World | null = null;
+  let game: Game | null = null;
+  let input: PointerInput | null = null;
+  /** Set when a setting changed while the scene was being built. */
+  let changedWhileLoading = false;
+
+  let fete: Fete = resolveFete(settings.fete);
   const applyTheme = () => {
+    if (!world || !game) return;
     world.setGround(settings.ground[settings.theme]);
     game.setTheme(settings.theme, settings.covers[settings.theme], settings.animals, settings.colors);
   };
-  applyTheme();
-  let fete: Fete = resolveFete(settings.fete);
-  game.setFete(fete);
   /** Also called when the menu opens or play starts: with 'auto', the season may have turned. */
   const applyFete = () => {
     const next = resolveFete(settings.fete);
-    if (next === fete) return;
+    if (next === fete && game) return;
     fete = next;
-    game.setFete(fete);
+    game?.setFete(fete);
+  };
+  const applySpeed = () => {
+    if (!game) return;
+    game.autoSpeed = settings.speed === 'auto';
+    game.speed = SPEED_FACTOR[settings.speed];
+  };
+  /** The whole scene from the settings: after a reset, a surprise, or if they changed during loading. */
+  const applyAll = () => {
+    if (!world || !game) return;
+    world.setViewSize(settings.size);
+    world.setStyle(settings.style);
+    applySpeed();
+    applyTheme();
+    applyFete();
   };
 
   const session = new Session();
@@ -97,29 +130,25 @@ function start(world: World): void {
   let sessionOver = false;
   let summary: { catches: number; minutes: number } | null = null;
   const vibrationSupported = typeof navigator.vibrate === 'function';
-  game.onCatch = () => {
-    if (!playing) return;
-    session.caught();
-    // A short buzz when a paw lands right on an animal.
-    if (settings.vibration && vibrationSupported) navigator.vibrate(40);
-  };
-
-  const input = new PointerInput(canvas, world, game);
   const wakeLock = new ScreenWakeLock();
   const micSupported = !!navigator.mediaDevices?.getUserMedia;
   let mic: Mic | null = null;
   let playing = false;
   let played = false;
+  /** Tablet on its stand: the screen rests between two automatic sessions. */
+  let resting = false;
+  let restUntil = 0;
+  let restTimer = 0;
 
   // --- Menu -------------------------------------------------------------------
 
   const options = new Menu(
-    {
-      root: menu, themes: $('#themes'), fetes: $('#fetes'), tabs: $('#tabs'), panel: $('#tab-panel'),
-      about: $('#about'), lang: $('#lang'),
-    },
+    { root: menu, themes: $('#themes'), tabs: $('#tabs'), panel: $('#tab-panel'), about: $('#about'), lang: $('#lang') },
     settings,
-    { change, micSupported, vibrationSupported, previewVolume: () => voice.preview(), reset, activeFete: () => fete },
+    {
+      change, micSupported, vibrationSupported, previewVolume: () => voice.preview(), reset, surprise,
+      activeFete: () => fete, stats: () => session.stats,
+    },
   );
 
   const catName = () => settings.catName.trim();
@@ -154,11 +183,19 @@ function start(world: World): void {
     );
   }
 
+  /** The small counter in a corner while the cat plays: catches, and minutes left in a timed session. */
+  function renderHud(): void {
+    hudEl.hidden = !playing || !settings.hud;
+    if (hudEl.hidden) return;
+    const time = session.timed ? ` · ${session.minutesLeft} min` : '';
+    hudEl.textContent = `🐾 ${session.catches}${time}`;
+  }
+
   const refreshMenu = () => {
     options.render();
     renderStats();
     renderSummary();
-    playBtn.textContent = t(played && !sessionOver ? 'resume' : 'play');
+    playBtn.textContent = t(!game ? 'loading' : played && !sessionOver ? 'resume' : 'play');
     exitFsBtn.hidden = !isFullscreen();
   };
 
@@ -176,9 +213,15 @@ function start(world: World): void {
       void setLang(settings.lang).then(refreshMenu);
       return;
     }
+    if (!world || !game) {
+      // Still loading: the scene is built from the settings as they are once it is ready.
+      changedWhileLoading = true;
+      refreshMenu();
+      return;
+    }
     if (key === 'theme') applyTheme();
     if (key === 'animals' || key === 'colors') game.setPopulation(settings.animals, settings.colors);
-    if (key === 'speed') game.speed = SPEED_FACTOR[settings.speed];
+    if (key === 'speed') applySpeed();
     if (key === 'covers') game.setCovers(settings.covers[settings.theme]);
     if (key === 'size') {
       world.setViewSize(settings.size);
@@ -195,15 +238,34 @@ function start(world: World): void {
   function reset(): void {
     resetSettings(settings);
     saveSettings(settings);
-    world.setViewSize(settings.size);
-    world.setStyle(settings.style);
-    game.speed = SPEED_FACTOR[settings.speed];
-    applyTheme();
-    applyFete();
+    changedWhileLoading = true;
+    applyAll();
     refreshMenu();
   }
 
-  /** The text and the link (to this scene) for the share sheet, or the clipboard. */
+  /** A random theme with two or three of its species, their colours, a ground and some hiding spots. */
+  function surprise(): void {
+    const theme = pickOne(THEMES);
+    settings.theme = theme;
+    const list = SPECIES[theme];
+    for (const sp of list) settings.animals[sp.key] = 0;
+    const picks = [...list].sort(() => Math.random() - 0.5).slice(0, 2 + Math.floor(Math.random() * 2));
+    let budget = 6;
+    for (const sp of picks) {
+      const n = Math.max(1, Math.min(sp.max, 1 + Math.floor(Math.random() * 2), budget));
+      settings.animals[sp.key] = n;
+      budget -= n;
+      settings.colors[sp.key] = pickOne(sp.variants).id;
+    }
+    settings.ground[theme] = pickOne(GROUNDS[theme]);
+    settings.covers[theme] = COVERS[theme].map((c) => c.kind).filter(() => Math.random() < 0.5);
+    saveSettings(settings);
+    changedWhileLoading = true;
+    applyAll();
+    refreshMenu();
+  }
+
+  /** The text and the link (to this scene) for the share sheet, with a picture where the browser allows. */
   async function share(): Promise<void> {
     const cat = catName() || t('myCat');
     const text = session.catches
@@ -212,13 +274,29 @@ function start(world: World): void {
         ? tf('shareTotal', { cat, catches: catches(session.stats.total) })
         : t('shareIntro');
     const url = `${location.origin}${langHome(currentLang())}?${presetQuery(settings)}`;
+    const animals = SPECIES[settings.theme].filter((sp) => settings.animals[sp.key] > 0).map((sp) => ({ icon: sp.icon, n: settings.animals[sp.key] }));
+    const picture = await shareCard({
+      // The sentence without its trailing paw, which would wrap alone onto a line of its own.
+      theme: settings.theme, cat, catches: session.catches || session.stats.total, line: text.replace(/\s*🐾$/u, ''), animals, site: SITE,
+      rtl: document.documentElement.dir === 'rtl',
+    });
+    const file = picture ? new File([picture], 'meowtrix.png', { type: 'image/png' }) : null;
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Meowtrix', text, url });
+        if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ title: 'Meowtrix', text, url, files: [file] });
+        else await navigator.share({ title: 'Meowtrix', text, url });
         return;
       } catch (e) {
         if ((e as DOMException).name === 'AbortError') return;
       }
+    }
+    // No share sheet (desktop): the text and link go to the clipboard, the picture to the downloads.
+    if (file) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
     }
     try {
       await navigator.clipboard.writeText(`${text} ${url}`);
@@ -230,26 +308,64 @@ function start(world: World): void {
   shareBtn.addEventListener('click', () => void share());
 
   function openMenu(): void {
-    if (!playing) return;
+    if (resting) stopRest();
+    else if (!playing) return;
     playing = false;
-    input.enabled = false;
+    if (input) input.enabled = false;
+    if (game) game.active = false;
     voice.setMuted(true);
     applyFete();
     menu.classList.remove('hidden');
     holdBtn.hidden = true;
+    renderHud();
     refreshMenu();
     playBtn.focus();
   }
 
-  /** Time is up and the cat made its last catch (or gave up): show how it went. */
+  /** Time is up and the cat made its last catch (or gave up): show how it went, or rest until the next one. */
   function endSession(): void {
     summary = { catches: session.catches, minutes: Math.max(1, Math.round(session.elapsed / 60)) };
     sessionOver = true;
-    game.tired = 0;
-    openMenu();
+    if (game) game.tired = 0;
+    if (settings.rest && settings.session) startRest();
+    else openMenu();
+  }
+
+  /** The screen goes dark and quiet; a new session starts on its own when the time comes. A long press still opens the menu. */
+  function startRest(): void {
+    playing = false;
+    resting = true;
+    if (input) input.enabled = false;
+    if (game) game.active = false;
+    voice.setMuted(true);
+    restUntil = Date.now() + settings.rest * 3_600_000;
+    restEl.hidden = false;
+    renderHud();
+    world?.renderer.setAnimationLoop(null);
+    updateRest();
+    restTimer = window.setInterval(updateRest, 20_000);
+  }
+
+  function updateRest(): void {
+    const left = restUntil - Date.now();
+    if (left > 0) {
+      restText.textContent = tf('nextSession', { time: timeLeft(left) });
+      return;
+    }
+    stopRest();
+    void play();
+  }
+
+  function stopRest(): void {
+    clearInterval(restTimer);
+    resting = false;
+    restEl.hidden = true;
+    last = 0;
+    world?.renderer.setAnimationLoop(frame);
   }
 
   async function play(): Promise<void> {
+    if (!game || !input) return;
     // Fullscreen and audio must start synchronously inside the click.
     enterFullscreen();
     const ctx = voice.init();
@@ -267,6 +383,8 @@ function start(world: World): void {
     holdBtn.hidden = false;
     playing = true;
     input.enabled = true;
+    game.active = true;
+    renderHud();
     if (!played) toast(t(matchMedia('(pointer: fine)').matches ? 'holdHintMouse' : 'holdHint'));
     played = true;
 
@@ -301,7 +419,7 @@ function start(world: World): void {
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const) holdBtn.addEventListener(ev, cancelHold);
 
   document.addEventListener('keydown', (e) => {
-    if (['Escape', 'Backspace', 'GoBack', 'BrowserBack'].includes(e.key) && playing) {
+    if (['Escape', 'Backspace', 'GoBack', 'BrowserBack'].includes(e.key) && (playing || resting)) {
       e.preventDefault();
       openMenu();
     }
@@ -309,7 +427,7 @@ function start(world: World): void {
 
   // Double-click with a mouse leaves fullscreen. Ignored for touch: a cat taps twice all the time.
   canvas.addEventListener('dblclick', () => {
-    if (!playing || input.lastType !== 'mouse') return;
+    if (!playing || input?.lastType !== 'mouse') return;
     if (isFullscreen()) exitFullscreen();
     else openMenu();
   });
@@ -342,22 +460,42 @@ function start(world: World): void {
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('dblclick', (e) => e.preventDefault());
 
+  // The menu is usable from here on; Play waits for the scene.
+  playBtn.disabled = true;
+  playBtn.classList.add('is-loading');
   refreshMenu();
+  menu.classList.add('ready');
+  void boot();
 
   // --- Loop -------------------------------------------------------------------
 
   let last = 0;
+  let lastIdle = 0;
   let perfTime = 0;
   let perfFrames = 0;
-  let perfDone = false;
+  /** Quality is adjusted at most this many times, then left alone. */
+  let perfChecks = 0;
+  let sceneShown = false;
+  let hudSecond = -1;
 
   const frame = (now: number) => {
+    if (!world || !game) return;
+    // Behind the open menu, a few frames a second are plenty: the battery matters more.
+    if (!playing) {
+      if (now - lastIdle < IDLE_FRAME_MS) return;
+      lastIdle = now;
+    }
     const dt = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60;
     last = now;
 
     if (playing) {
       if (session.update(dt)) endSession();
       else game.tired = session.tired;
+      const second = Math.floor(session.elapsed);
+      if (second !== hudSecond) {
+        hudSecond = second;
+        renderHud();
+      }
     }
     game.update(dt);
     world.update(dt);
@@ -368,34 +506,88 @@ function start(world: World): void {
       if (level) game.noise(level);
     }
     world.render();
+    // The first picture is there: fade the scene in behind the menu.
+    if (!sceneShown) {
+      sceneShown = true;
+      document.body.classList.add('scene-ready');
+    }
 
-    // After a short warm-up, measure the frame rate once and lighten the load if needed.
-    if (!perfDone && now > 2000) {
+    // While the cat plays, measure the frame rate a few times: a slow device gets a lighter
+    // picture, a fast one that started modestly gets the full one.
+    if (playing && perfChecks < 3 && now > 2000) {
       perfTime += dt;
-      if (++perfFrames === 90) {
-        perfDone = true;
-        if (perfTime / perfFrames > 1 / 40) world.setLowQuality();
+      if (++perfFrames === 120) {
+        const avg = perfTime / perfFrames;
+        perfTime = perfFrames = 0;
+        perfChecks++;
+        const q = world.quality;
+        if (avg > 1 / 40 && q > 0) world.setQuality((q - 1) as Quality);
+        else if (avg < 1 / 57 && q < 2) world.setQuality((q + 1) as Quality);
+        else perfChecks = 3;
       }
     }
   };
 
-  if (import.meta.env.DEV) Object.assign(window, { meowtrix: { world, game, session } });
+  /**
+   * Builds the scene in four steps, with a frame between them so the menu stays responsive and the
+   * Play button shows the progress: renderer, ground, animals, then the fête's outfits.
+   */
+  async function boot(): Promise<void> {
+    const step = async (done: number) => {
+      playBtn.style.setProperty('--progress', `${done * 25}%`);
+      await nextFrame();
+    };
+    const w = createWorld();
+    if (!w) return;
+    // Phones and tablets start a notch lower; the frame rate check raises it if they can take it.
+    w.setQuality(matchMedia('(pointer: coarse)').matches ? 1 : 2);
+    await step(1);
+    w.setViewSize(settings.size);
+    w.setStyle(settings.style);
+    w.setGround(settings.ground[settings.theme]);
+    await step(2);
+    const g = new Game(w, voice);
+    g.autoSpeed = settings.speed === 'auto';
+    g.speed = SPEED_FACTOR[settings.speed];
+    g.setTheme(settings.theme, settings.covers[settings.theme], settings.animals, settings.colors);
+    await step(3);
+    g.setFete(fete);
+    g.onCatch = (key) => {
+      if (!playing) return;
+      session.caught(key);
+      renderHud();
+      // A short buzz when a paw lands right on an animal.
+      if (settings.vibration && vibrationSupported) navigator.vibrate(40);
+    };
+    await step(4);
 
-  world.renderer.setAnimationLoop(frame);
+    world = w;
+    game = g;
+    input = new PointerInput(canvas, w, g);
+    if (changedWhileLoading) applyAll();
+    session.setLength(settings.session);
+    if (import.meta.env.DEV) Object.assign(window, { meowtrix: { world, game, session } });
+    w.renderer.setAnimationLoop(frame);
+
+    playBtn.disabled = false;
+    playBtn.classList.remove('is-loading');
+    refreshMenu();
+  }
 
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
-    world.resize();
+    world?.resize();
     clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(() => game.relayout(false), 400);
+    resizeTimer = window.setTimeout(() => game?.relayout(false), 400);
   });
   document.addEventListener('visibilitychange', () => {
+    if (!world) return;
     if (document.hidden) {
       world.renderer.setAnimationLoop(null);
       voice.suspend();
     } else {
       last = 0;
-      world.renderer.setAnimationLoop(frame);
+      if (!resting) world.renderer.setAnimationLoop(frame);
       voice.resume();
     }
   });

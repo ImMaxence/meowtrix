@@ -1,4 +1,5 @@
 import { BUG_COLORS } from './game/bug/bugs';
+import { CATERPILLAR_COLORS } from './game/bug/caterpillar';
 import type { CoverKind } from './game/covers';
 import { FISH_COLORS } from './game/fish/kinds';
 import { BIRD_COLORS } from './game/flyer/bird';
@@ -62,7 +63,7 @@ export const resolveFete = (choice: FeteChoice, date = new Date()): Fete => (cho
 const MAX = 4;
 
 export type AnimalKey =
-  | 'lizards' | 'longtails' | 'frogs' | 'flies' | 'ladybugs' | 'beetles' | 'grasshoppers' | 'roaches'
+  | 'lizards' | 'longtails' | 'frogs' | 'flies' | 'ladybugs' | 'beetles' | 'grasshoppers' | 'roaches' | 'caterpillars'
   | 'mice' | 'squirrels' | 'birds'
   | 'goldfish' | 'kois' | 'sardines' | 'sharks' | 'salmons' | 'trouts'
   | 'butterflies' | 'fireflies' | 'feathers' | 'laser';
@@ -92,6 +93,7 @@ export const SPECIES: Record<Theme, readonly SpeciesInfo[]> = {
     info('beetles', '🪲', 'bugs', BUG_COLORS.beetles),
     info('grasshoppers', '🦗', 'bugs', GRASSHOPPER_COLORS),
     info('roaches', '🪳', 'bugs', BUG_COLORS.roaches),
+    info('caterpillars', '🐛', 'bugs', CATERPILLAR_COLORS),
     info('mice', '🐭', 'small', COATS.mice),
     info('squirrels', '🐿️', 'small', COATS.squirrels),
     info('birds', '🐦', 'small', BIRD_COLORS),

@@ -32,7 +32,6 @@
 
         <div id="summary" class="summary" role="status" hidden></div>
         <nav id="themes" class="themes"></nav>
-        <nav id="fetes" class="fetes"></nav>
         <nav id="tabs" class="tabs"></nav>
         <div id="tab-panel" class="tab-panel" role="tabpanel"></div>
         <article id="about" class="tab-panel about" role="tabpanel">
@@ -45,7 +44,8 @@
             <p id="stats" class="stats" aria-live="polite" hidden></p>
             <button id="share" class="share" type="button" data-i18n="share"></button>
           </div>
-          <button id="play" class="play" type="button"></button>
+          <!-- Stays at the bottom of the screen on phones, where the whole panel scrolls. -->
+          <div class="play-bar"><button id="play" class="play" type="button"></button></div>
           <div class="foot-actions">
             <button id="exit-fs" class="ghost" type="button" data-i18n="exitFullscreen" hidden></button>
             <button id="install" class="ghost" type="button" data-i18n="install" hidden></button>
@@ -65,6 +65,15 @@
         </footer>
       </div>
     </main>
+
+    <!-- Catches and time left while the cat plays (Settings: on-screen counter). -->
+    <div id="hud" class="hud" aria-live="off" hidden></div>
+
+    <!-- Tablet on its stand: dark between two automatic sessions; the hold button above still opens the menu. -->
+    <div id="rest" class="rest" hidden>
+      <p class="rest-paw" aria-hidden="true">🐾</p>
+      <p id="rest-text" class="rest-text"></p>
+    </div>
 
     <button id="hold" class="hold" type="button" data-i18n-aria="holdLabel" hidden>
       <svg viewBox="0 0 48 48" aria-hidden="true">

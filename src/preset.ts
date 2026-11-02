@@ -1,6 +1,6 @@
 import { COVERS, FETE_CHOICES, GROUNDS, SPECIES, THEMES } from './catalog';
 import { LANG_CODES, type Lang } from './langs';
-import { STYLES, themeTotal, type Settings } from './settings';
+import { SPEEDS, STYLES, themeTotal, type Settings } from './settings';
 
 /**
  * The scene as link parameters: theme, fête, animals with their colours, ground, hiding spots,
@@ -36,7 +36,7 @@ export function applyPreset(s: Settings, query: string): boolean {
   const t = s.theme;
   set('fete', pick('fete', FETE_CHOICES));
   set('size', pick('size', ['small', 'medium', 'large'] as const));
-  set('speed', pick('speed', ['slow', 'normal', 'fast'] as const));
+  set('speed', pick('speed', SPEEDS));
   set('style', pick('style', STYLES));
   set('lang', pick<Lang>('lang', LANG_CODES));
   const ground = pick('ground', GROUNDS[t]);

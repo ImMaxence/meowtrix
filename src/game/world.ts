@@ -7,6 +7,8 @@ import { PixelPass } from './pixel';
 import { SURFACE, Water } from './water';
 
 export type ViewSize = 'small' | 'medium' | 'large';
+/** 0 low, 1 medium, 2 high (see setQuality). */
+export type Quality = 0 | 1 | 2;
 export type RenderStyle = 'classic' | 'pixel';
 
 /** Visible ground along the screen's short side, in lizard lengths. */
@@ -44,6 +46,7 @@ export class World {
   private readonly ndc = new THREE.Vector2();
   private viewShort = VIEW_SHORT.medium;
   private maxPixelRatio = 2;
+  quality: Quality = 2;
   /** Created the first time the water theme is shown. */
   private water: Water | null = null;
   private ground: GroundTheme = 'stone';
@@ -93,7 +96,6 @@ export class World {
     const tex = makeGroundTexture(theme);
     tex.anisotropy = this.maxAnisotropy;
     tex.repeat.setScalar(GROUND_SIZE / TILE);
-    this.groundMat.map?.dispose();
     this.groundMat.map = tex;
     this.groundMat.roughness = groundRoughness(theme);
     this.groundMat.needsUpdate = true;
@@ -184,10 +186,12 @@ export class World {
     this.updateCamera();
   }
 
-  /** Drops resolution and shadow quality for slow devices (TVs, old phones). */
-  setLowQuality(): void {
-    this.maxPixelRatio = 1;
-    this.sun.shadow.mapSize.set(1024, 1024);
+  /** Resolution and shadow sharpness: 0 for slow devices (TVs, old phones), 2 for the full picture. */
+  setQuality(level: Quality): void {
+    this.quality = level;
+    this.maxPixelRatio = [1, 1.5, 2][level];
+    const shadow = [1024, 1536, 2048][level];
+    this.sun.shadow.mapSize.set(shadow, shadow);
     this.sun.shadow.map?.dispose();
     this.sun.shadow.map = null;
     this.resize();

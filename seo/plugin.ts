@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { Plugin } from 'vite';
 import { langInfo, type Lang } from '../src/langs.ts';
 import { changelogPage, RELEASES } from './changelog.ts';
@@ -167,6 +168,12 @@ export function seoPages(version: string): Plugin {
       this.emitFile({ type: 'asset', fileName: 'llms-full.txt', source: llmsFull(version) });
       this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap(new Date().toISOString().slice(0, 10)) });
       this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llmsText(version) });
+      // The service worker, with every built file to cache at install (see seo/sw.js).
+      const assets = Object.keys(bundle).filter((name) => name.startsWith('assets/')).map((name) => '/' + name);
+      const sw = readFileSync(new URL('./sw.js', import.meta.url), 'utf8')
+        .replace('__VERSION__', version)
+        .replace('__ASSETS__', JSON.stringify(assets));
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source: sw });
     },
   };
 }
