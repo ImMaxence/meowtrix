@@ -7,6 +7,18 @@ Sur le site, la page [/changelog/](https://meowtrix.mbonnici.fr/changelog/) raco
 anglais, pour les joueurs ; elle est écrite à partir de `seo/changelog.ts`. À chaque nouvelle version,
 on complète les deux : le build refuse un numéro de version sans entrée dans `seo/changelog.ts`.
 
+## 0.6.1 — 2 novembre 2026
+
+### Corrigé
+
+- **Page des nouveautés** : les ronds de la frise sont exactement sur la ligne, quelle que soit la
+  mise à l'échelle de l'écran (ils étaient décalés de 1 à 2 pixels à 125 %), et la ligne va du
+  premier au dernier rond sans dépasser. Chaque rond est aussi aligné sur le titre de sa version.
+
+### Pour les développeurs
+
+- `seo/changelog.ts` accepte une rubrique « Fixed » (`fixed`) en plus de « New » et « Improved ».
+
 ## 0.6.0 — 2 novembre 2026
 
 Meowtrix parle maintenant 44 langues.

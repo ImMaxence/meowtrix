@@ -14,9 +14,19 @@ export interface Release {
   added?: readonly string[];
   /** Things that work better than before (HTML). */
   improved?: readonly string[];
+  /** Things that were wrong and now aren't (HTML). */
+  fixed?: readonly string[];
 }
 
 export const RELEASES: readonly Release[] = [
+  {
+    version: '0.6.1',
+    date: '2026-11-02',
+    summary: 'A tidier timeline on this page.',
+    fixed: [
+      'The dots of this page’s timeline sit exactly on the line, whatever the screen’s scaling, and the line now runs from the first version to the last without sticking out.',
+    ],
+  },
   {
     version: '0.6.0',
     date: '2026-11-02',
@@ -96,6 +106,7 @@ ${latest ? '<span class="badge">Latest</span>' : ''}
 <p class="summary">${r.summary}</p>
 ${list('New', 'new', r.added)}
 ${list('Improved', 'improved', r.improved)}
+${list('Fixed', 'fixed', r.fixed)}
 </article>
 </li>`;
 }
@@ -206,41 +217,52 @@ export function changelogPage(): string {
         font-size: 1.05rem;
       }
       .releases {
-        position: relative;
         margin: 0;
         padding: 0;
         list-style: none;
       }
-      /* The timeline. */
-      .releases::before {
-        content: '';
-        position: absolute;
-        top: 12px;
-        bottom: 12px;
-        left: 7px;
-        width: 2px;
-        background: linear-gradient(var(--accent), var(--line) 30%);
-        opacity: 0.6;
-      }
+      /* The timeline: each version draws its dot, level with its title, and the line down to the
+         next dot. Both are centred on the same axis by the same transform, so they stay aligned
+         whatever the screen's scaling. */
       .release {
+        --axis: 8px;
+        --dot: 16px;
+        --dot-y: 37px;
         position: relative;
         padding: 0 0 22px 34px;
       }
-      .release::before {
+      .release::before,
+      .release::after {
         content: '';
         position: absolute;
-        top: 22px;
-        left: 0;
-        width: 16px;
-        height: 16px;
+        left: var(--axis);
+        transform: translateX(-50%);
+      }
+      .release::before {
+        z-index: 1;
+        top: calc(var(--dot-y) - var(--dot) / 2);
+        width: var(--dot);
+        height: var(--dot);
         border: 2px solid var(--muted);
         border-radius: 50%;
         background: var(--bg);
+      }
+      .release::after {
+        top: var(--dot-y);
+        bottom: calc(-1 * var(--dot-y));
+        width: 2px;
+        background: var(--line);
+      }
+      .release:last-child::after {
+        display: none;
       }
       .release.latest::before {
         border-color: var(--accent);
         background: var(--accent);
         box-shadow: 0 0 0 5px var(--accent-soft), 0 0 18px rgba(182, 243, 107, 0.5);
+      }
+      .release.latest::after {
+        background: linear-gradient(var(--accent), var(--line));
       }
       article {
         padding: 18px 20px 6px;
@@ -304,6 +326,9 @@ export function changelogPage(): string {
       h3.improved {
         color: #7fd3ff;
       }
+      h3.fixed {
+        color: #ffb36b;
+      }
       ul {
         margin: 0 0 12px;
         padding: 0;
@@ -331,6 +356,9 @@ export function changelogPage(): string {
       h3.improved + ul li::before {
         background: #7fd3ff;
       }
+      h3.fixed + ul li::before {
+        background: #ffb36b;
+      }
       strong {
         color: var(--text);
       }
@@ -342,12 +370,10 @@ export function changelogPage(): string {
       }
       @media (max-width: 480px) {
         .release {
+          --axis: 7px;
+          --dot: 14px;
+          --dot-y: 35px;
           padding-left: 26px;
-        }
-        .release::before {
-          width: 14px;
-          height: 14px;
-          left: 1px;
         }
         article {
           padding: 16px 16px 4px;
